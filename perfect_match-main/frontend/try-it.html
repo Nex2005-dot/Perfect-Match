@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Try It — Perfect Match</title>
+  <meta name="description" content="Upload a photo or use your webcam to analyze your skin tone and get personalized makeup color recommendations." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+  <link href="assets/css/main.css" rel="stylesheet" />
+  <style>
+    .input-option-card {
+      border: 2px solid var(--border-light);
+      border-radius: var(--radius-xl);
+      padding: 0;
+      background: var(--pm-white);
+      transition: var(--transition);
+      overflow: hidden;
+    }
+    .input-option-card.selected {
+      border-color: var(--pm-gold);
+      box-shadow: 0 0 0 4px rgba(184,147,90,0.1);
+    }
+    .option-tab-bar {
+      display: flex;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .option-tab {
+      flex: 1;
+      padding: 1rem 1.25rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg-soft);
+      border: none;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .option-tab:first-child { border-radius: 0; }
+    .option-tab.active {
+      background: var(--pm-white);
+      color: var(--text-primary);
+      border-bottom: 2px solid var(--pm-gold);
+    }
+    .option-tab:hover:not(.active) { background: rgba(255,255,255,0.7); color: var(--text-secondary); }
+
+    .option-panel { padding: 1.75rem; display: none; }
+    .option-panel.active { display: block; }
+
+    /* Camera indicators */
+    .cam-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.78rem;
+      font-weight: 500;
+      padding: 5px 12px;
+      border-radius: var(--radius-full);
+      background: rgba(0,0,0,0.45);
+      color: white;
+    }
+    .cam-indicator .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .cam-indicator .dot.green  { background:#4CAF50; animation: pulseDot 1.2s infinite; }
+    .cam-indicator .dot.yellow { background:#FFC107; }
+    .cam-indicator .dot.red    { background:#E07272; }
+
+    .cam-overlay-bar {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      background: linear-gradient(transparent, rgba(0,0,0,0.55));
+      padding: 1rem 1.25rem 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      pointer-events: none;
+    }
+
+    /* Preview state */
+    .preview-wrap {
+      position: relative;
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      background: var(--bg-soft);
+      aspect-ratio: 4/3;
+      max-width: 480px;
+      width: 100%;
+      margin: 0 auto;
+    }
+    .preview-wrap img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+      transition: opacity 0.55s cubic-bezier(0.2,0.7,0.2,1),
+        filter 0.55s cubic-bezier(0.2,0.7,0.2,1),
+        transform 0.7s cubic-bezier(0.2,0.7,0.2,1);
+    }
+    .preview-wrap img.processing {
+      opacity: 0.68;
+      filter: blur(1.5px);
+      transform: scale(1.01);
+    }
+    .photo-processing-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.65rem;
+      color: var(--text-primary);
+      font-size: 0.85rem;
+      font-weight: 600;
+      background: linear-gradient(135deg, rgba(255,255,255,0.78), rgba(255,255,255,0.58));
+      backdrop-filter: blur(5px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+    .photo-processing-overlay.visible { opacity: 1; }
+    .photo-processing-overlay .spinner-border {
+      width: 1.15rem;
+      height: 1.15rem;
+      color: var(--pm-gold);
+    }
+    .preview-overlay {
+      position: absolute; inset: 0;
+      background: rgba(0,0,0,0.35);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; transition: var(--transition);
+    }
+    .preview-wrap:hover .preview-overlay { opacity: 1; }
+
+    /* Error state card */
+    .error-state-card {
+      border: 2px solid rgba(224,114,114,0.4);
+      background: rgba(224,114,114,0.05);
+    }
+
+    .tips-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      padding: 4px 0;
+    }
+    .tips-list li i { color: var(--pm-gold); font-size: 0.8rem; margin-top: 2px; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+
+<!-- ===================== NAVBAR ===================== -->
+<nav class="pm-navbar navbar navbar-expand-lg">
+  <div class="container">
+    <a class="navbar-brand pm-navbar-brand" href="index.html">
+      <div class="pm-logo-mark">PM</div>
+      <span class="pm-logo-text">Perfect <span>Match</span></span>
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#pmNavbar">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="pmNavbar">
+      <ul class="navbar-nav mx-auto gap-1">
+        <li class="nav-item"><a class="nav-link" href="index.html">Home</a></li>
+        <li class="nav-item"><a class="nav-link active" href="try-it.html">Try It</a></li>
+        <li class="nav-item" data-show="auth"><a class="nav-link" href="history.html">My Results</a></li>
+        <li class="nav-item"><a class="nav-link" href="index.html#how-it-works">How It Works</a></li>
+      </ul>
+      <div class="d-flex align-items-center gap-2 mt-3 mt-lg-0">
+        <a href="login.html" class="nav-link btn-nav-login" data-show="guest">Login</a>
+        <a href="register.html" class="nav-link btn-nav-signup" data-show="guest">Sign Up</a>
+        <div class="d-none align-items-center gap-2" data-show="auth" style="display:none!important;">
+          <a href="history.html" class="btn-pm-ghost" style="font-size:0.875rem;"><i class="bi bi-clock-history"></i> My Results</a>
+          <a href="profile.html"><div class="pm-logo-mark" style="width:30px;height:30px;font-size:0.75rem;" data-user-initials>A</div></a>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ===================== PAGE HEADER ===================== -->
+<div class="page-header">
+  <div class="container text-center">
+    <!-- Step indicator -->
+    <div class="pm-steps mb-4" id="stepIndicator">
+      <div class="pm-step active" id="step1">
+        <div class="pm-step-num"><i class="bi bi-camera"></i></div>
+        <div class="pm-step-label">Capture</div>
+      </div>
+      <div class="pm-step-connector" id="conn1"></div>
+      <div class="pm-step" id="step2">
+        <div class="pm-step-num">2</div>
+        <div class="pm-step-label">Align</div>
+      </div>
+      <div class="pm-step-connector" id="conn2"></div>
+      <div class="pm-step" id="step3">
+        <div class="pm-step-num">3</div>
+        <div class="pm-step-label">Analyze</div>
+      </div>
+      <div class="pm-step-connector" id="conn3"></div>
+      <div class="pm-step" id="step4">
+        <div class="pm-step-num">4</div>
+        <div class="pm-step-label">Results</div>
+      </div>
+    </div>
+
+    <h1 style="font-family:var(--font-display);font-size:clamp(1.5rem,3vw,2rem);font-weight:700;color:var(--text-primary);margin-bottom:0.4rem;">Find Your Perfect Match</h1>
+    <p style="color:var(--text-muted);font-size:0.9rem;max-width:44ch;margin:0 auto;">Choose how you'd like to provide your photo, then we'll analyze your skin tone and type.</p>
+  </div>
+</div>
+
+<!-- ===================== MAIN CONTENT ===================== -->
+<section class="section-pad-sm">
+  <div class="container">
+    <div class="row justify-content-center g-4">
+
+      <!-- ===== INPUT OPTIONS ===== -->
+      <div class="col-lg-7" id="inputSection">
+        <div class="input-option-card">
+          <!-- Tab bar -->
+          <div class="option-tab-bar">
+            <button class="option-tab active" id="tabCamera" onclick="switchTab('camera')">
+              <i class="bi bi-camera-video-fill"></i> Use Camera
+            </button>
+            <button class="option-tab" id="tabUpload" onclick="switchTab('upload')">
+              <i class="bi bi-upload"></i> Upload Image
+            </button>
+          </div>
+
+          <!-- CAMERA PANEL -->
+          <div class="option-panel active" id="panelCamera">
+            <!-- Camera frame -->
+            <div class="camera-frame" id="cameraFrame">
+              <video id="cameraVideo" autoplay muted playsinline style="width:100%;height:100%;object-fit:cover;display:none;"></video>
+              <canvas id="cameraCanvas" style="display:none;width:100%;height:100%;object-fit:cover;"></canvas>
+
+              <!-- Placeholder when camera is off -->
+              <div id="cameraPlaceholder" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;padding:2rem;text-align:center;">
+                <div style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-size:1.8rem;color:rgba(255,255,255,0.35);">
+                  <i class="bi bi-camera-video-off"></i>
+                </div>
+                <div>
+                  <p style="color:rgba(255,255,255,0.6);font-size:0.875rem;margin:0 0 6px;">Camera not active</p>
+                  <p style="color:rgba(255,255,255,0.35);font-size:0.78rem;margin:0;">Click "Start Camera" to begin</p>
+                </div>
+              </div>
+
+              <!-- Face guide oval (shown when camera active) -->
+              <div class="face-guide" id="faceGuide" style="display:none;">
+                <div class="face-oval"></div>
+              </div>
+
+              <!-- Camera overlay bar (shown when active) -->
+              <div class="cam-overlay-bar" id="camOverlayBar" style="display:none;">
+                <div class="d-flex gap-2 flex-wrap">
+                  <div class="cam-indicator" id="faceDetectIndicator">
+                    <div class="dot yellow"></div> Detecting face…
+                  </div>
+                  <div class="cam-indicator" id="lightingIndicator">
+                    <div class="dot green"></div> Good lighting
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Camera instructions -->
+            <div class="pm-alert pm-alert-info mt-3" id="cameraInstructions">
+              <i class="bi bi-info-circle flex-shrink-0"></i>
+              <div>
+                <div style="font-weight:600;margin-bottom:2px;">Position your face inside the frame.</div>
+                <div style="font-size:0.8rem;">Make sure your face is clearly visible and evenly lit. Avoid strong backlighting.</div>
+              </div>
+            </div>
+
+            <!-- Camera error states -->
+            <div class="pm-alert pm-alert-error mt-3" id="cameraError" style="display:none;">
+              <i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i>
+              <div>
+                <div style="font-weight:600;margin-bottom:2px;">Camera access required</div>
+                <div style="font-size:0.8rem;">Allow camera access in your browser, or switch to the Upload Image option.</div>
+              </div>
+            </div>
+
+            <!-- Face problem (no face / many faces / server offline) -->
+            <div class="pm-alert pm-alert-warning mt-3" id="cameraPhotoProblem" style="display:none;">
+              <i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i>
+              <div>
+                <div style="font-weight:600;" id="cameraPhotoProblemTitle"></div>
+                <div style="font-size:0.8rem;margin-top:2px;" id="cameraPhotoProblemText"></div>
+              </div>
+            </div>
+
+            <!-- Camera controls -->
+            <div class="d-flex gap-2 mt-3 flex-wrap" id="cameraControls">
+              <button class="btn-pm-primary flex-fill justify-content-center" id="startCameraBtn" onclick="startCamera()">
+                <i class="bi bi-camera-video-fill"></i> Start Camera
+              </button>
+            </div>
+            <div class="d-flex gap-2 mt-3 flex-wrap" id="captureControls" style="display:none!important;">
+              <button class="btn-pm-primary flex-fill justify-content-center" id="captureBtn" onclick="capturePhoto()">
+                <i class="bi bi-camera-fill"></i> Capture Photo
+              </button>
+              <button class="btn-pm-secondary" onclick="stopCamera()" style="padding:0.7rem 1.2rem;">
+                <i class="bi bi-x"></i> Stop
+              </button>
+            </div>
+
+            <!-- After capture: preview + continue -->
+            <div id="capturedPreviewSection" style="display:none;">
+              <div class="preview-wrap mt-3">
+                <img id="capturedPreview" src="" alt="Captured photo" />
+                <div class="photo-processing-overlay" id="captureProcessingOverlay" aria-live="polite">
+                  <span class="spinner-border" role="status" aria-hidden="true"></span>
+                  <span>Softening edges and replacing the background…</span>
+                </div>
+                <div class="preview-overlay">
+                  <button class="btn-pm-secondary" style="background:rgba(255,255,255,0.9);" onclick="retakeCamera()">
+                    <i class="bi bi-arrow-counterclockwise"></i> Retake
+                  </button>
+                </div>
+              </div>
+              <div class="d-flex gap-2 mt-3 flex-wrap">
+                <button class="btn-pm-primary flex-fill justify-content-center" id="analyzeCaptureBtn" onclick="proceedToAnalysis()">
+                  <i class="bi bi-arrow-right-circle-fill"></i> Analyze This Photo
+                </button>
+                <button class="btn-pm-secondary" onclick="retakeCamera()">
+                  <i class="bi bi-arrow-counterclockwise"></i> Retake
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- UPLOAD PANEL -->
+          <div class="option-panel" id="panelUpload">
+            <!-- Drop zone -->
+            <div class="upload-drop-zone" id="dropZone">
+              <div class="upload-icon-wrap">
+                <i class="bi bi-cloud-arrow-up-fill"></i>
+              </div>
+              <div>
+                <p style="font-size:0.95rem;font-weight:600;color:var(--text-primary);margin:0 0 4px;">Upload a clear frontal photo</p>
+                <p style="font-size:0.82rem;color:var(--text-muted);margin:0;">Drag &amp; drop here, or click to browse</p>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+                <span class="pm-badge" style="font-size:0.68rem;">JPG</span>
+                <span class="pm-badge" style="font-size:0.68rem;">PNG</span>
+                <span class="pm-badge" style="font-size:0.68rem;">Max 10MB</span>
+              </div>
+              <input type="file" id="fileInput" accept="image/jpeg,image/png,image/jpg" style="display:none;" />
+            </div>
+
+            <!-- After upload: preview -->
+            <div id="uploadPreviewSection" style="display:none;margin-top:1rem;">
+              <div class="preview-wrap">
+                <img id="uploadPreview" src="" alt="Uploaded photo" />
+                <div class="photo-processing-overlay" id="uploadProcessingOverlay" aria-live="polite">
+                  <span class="spinner-border" role="status" aria-hidden="true"></span>
+                  <span>Softening edges and replacing the background…</span>
+                </div>
+                <div class="preview-overlay">
+                  <button class="btn-pm-secondary" style="background:rgba(255,255,255,0.9);" onclick="changeImage()">
+                    <i class="bi bi-pencil"></i> Change Image
+                  </button>
+                </div>
+              </div>
+              <div style="margin-top:0.75rem;display:flex;align-items:center;gap:8px;">
+                <i class="bi bi-check-circle-fill" style="color:#4CAF50;font-size:1rem;"></i>
+                <span id="uploadFileName" style="font-size:0.82rem;color:var(--text-secondary);"></span>
+                <span id="uploadCheckStatus" style="font-size:0.8rem;color:var(--text-muted);margin-left:auto;"></span>
+              </div>
+              <div class="d-flex gap-2 mt-3 flex-wrap">
+                <button class="btn-pm-primary flex-fill justify-content-center" id="analyzeUploadBtn" onclick="proceedToAnalysis()">
+                  <i class="bi bi-arrow-right-circle-fill"></i> Analyze This Photo
+                </button>
+                <button class="btn-pm-secondary" onclick="changeImage()">
+                  <i class="bi bi-pencil"></i> Change Image
+                </button>
+              </div>
+            </div>
+
+            <!-- Upload error states -->
+            <div id="uploadErrorSection" style="display:none;margin-top:1rem;">
+              <!-- No face detected -->
+              <div class="pm-alert pm-alert-error" id="errorNoFace" style="display:none;">
+                <i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i>
+                <div>
+                  <div style="font-weight:600;">We couldn't detect a face</div>
+                  <div style="font-size:0.8rem;margin-top:2px;">Please upload a clear frontal photo with your face fully visible.</div>
+                </div>
+              </div>
+              <!-- Multiple faces -->
+              <div class="pm-alert pm-alert-warning" id="errorMultiFace" style="display:none;">
+                <i class="bi bi-people-fill flex-shrink-0"></i>
+                <div>
+                  <div style="font-weight:600;">Multiple faces detected</div>
+                  <div style="font-size:0.8rem;margin-top:2px;">Please make sure only one face appears in the image.</div>
+                </div>
+              </div>
+              <!-- Poor lighting -->
+              <div class="pm-alert pm-alert-warning" id="errorLighting" style="display:none;">
+                <i class="bi bi-brightness-high flex-shrink-0"></i>
+                <div>
+                  <div style="font-weight:600;">Lighting may affect accuracy</div>
+                  <div style="font-size:0.8rem;margin-top:2px;">Try taking your photo in a well-lit area for better results.</div>
+                </div>
+              </div>
+              <!-- Invalid image -->
+              <div class="pm-alert pm-alert-error" id="errorInvalidImage" style="display:none;">
+                <i class="bi bi-file-earmark-x-fill flex-shrink-0"></i>
+                <div>
+                  <div style="font-weight:600;">Invalid image</div>
+                  <div style="font-size:0.8rem;margin-top:2px;">Please upload a JPG or PNG image file.</div>
+                </div>
+              </div>
+              <div class="pm-alert pm-alert-error" id="errorBackgroundProcessing" style="display:none;">
+                <i class="bi bi-image-alt flex-shrink-0"></i>
+                <div>
+                  <div style="font-weight:600;">Could not make the background white</div>
+                  <div style="font-size:0.8rem;margin-top:2px;">Check your internet connection and try another photo.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Privacy notice -->
+        <div class="pm-alert pm-alert-info mt-3" style="font-size:0.78rem;">
+          <i class="bi bi-shield-lock flex-shrink-0"></i>
+          <span>Camera frames may be sent to Perfect Match's server for face detection. Your selected photo's background is replaced with white in your browser, then the processed image is sent for skin analysis. It is saved to your account only if you choose Save Result. <strong>Not a medical diagnostic tool.</strong></span>
+        </div>
+      </div>
+
+      <!-- ===== SIDEBAR: TIPS ===== -->
+      <div class="col-lg-4 col-xl-3">
+        <div class="pm-card pm-card-body mb-3">
+          <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--pm-gold);margin-bottom:0.9rem;">
+            <i class="bi bi-lightbulb-fill me-1"></i> Photo Tips
+          </div>
+          <ul class="tips-list" style="margin:0;padding:0;">
+            <li><i class="bi bi-check-circle-fill"></i> Face the camera directly, looking straight ahead.</li>
+            <li><i class="bi bi-check-circle-fill"></i> Use natural or soft indoor lighting — avoid harsh shadows.</li>
+            <li><i class="bi bi-check-circle-fill"></i> Remove glasses, heavy accessories, or face coverings.</li>
+            <li><i class="bi bi-check-circle-fill"></i> Keep your face clean or lightly made up for best results.</li>
+            <li><i class="bi bi-check-circle-fill"></i> Ensure your entire face is clearly visible in the frame.</li>
+            <li><i class="bi bi-x-circle-fill" style="color:var(--pm-rose);"></i> Avoid strong backlighting or flash directly on the face.</li>
+            <li><i class="bi bi-x-circle-fill" style="color:var(--pm-rose);"></i> Do not upload images where face is obscured or at an angle.</li>
+          </ul>
+        </div>
+
+        <div class="pm-card pm-card-body mb-3">
+          <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--pm-gold);margin-bottom:0.9rem;">
+            <i class="bi bi-cpu me-1"></i> What We Detect
+          </div>
+          <div style="display:flex;flex-direction:column;gap:0.7rem;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="width:8px;height:8px;border-radius:50%;background:var(--pm-gold);flex-shrink:0;"></div>
+              <span style="font-size:0.82rem;color:var(--text-secondary);">Skin Tone (Light to Deep)</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="width:8px;height:8px;border-radius:50%;background:var(--pm-rose);flex-shrink:0;"></div>
+              <span style="font-size:0.82rem;color:var(--text-secondary);">Skin Type (Normal, Dry, Oily, Combination)</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="width:8px;height:8px;border-radius:50%;background:var(--pm-brown-mid);flex-shrink:0;"></div>
+              <span style="font-size:0.82rem;color:var(--text-secondary);">Undertone (Warm, Cool, Neutral)</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="width:8px;height:8px;border-radius:50%;background:var(--pm-tan);flex-shrink:0;"></div>
+              <span style="font-size:0.82rem;color:var(--text-secondary);">Facial Landmark Mapping</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Guest note -->
+        <div class="pm-card pm-card-body" id="guestNote" style="display:none;">
+          <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--pm-rose);margin-bottom:0.65rem;">
+            <i class="bi bi-person-dash me-1"></i> Guest Mode
+          </div>
+          <p style="font-size:0.8rem;color:var(--text-secondary);line-height:1.55;margin-bottom:0.75rem;">
+            You can analyze your skin as a guest, but your history and photo are not saved, and you only see a limited set of makeup shades. Log in to unlock everything.
+          </p>
+          <a href="register.html" class="btn-pm-primary w-100 justify-content-center" style="padding:0.6rem;font-size:0.82rem;">
+            <i class="bi bi-person-plus-fill"></i> Create Free Account
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== FOOTER ===================== -->
+<footer class="pm-footer">
+  <div class="container">
+    <div class="row gy-3">
+      <div class="col-md-6">
+        <a href="index.html" class="d-flex align-items-center gap-2 text-decoration-none mb-2">
+          <div class="pm-logo-mark" style="width:28px;height:28px;font-size:0.75rem;">PM</div>
+          <span class="pm-logo-text" style="color:rgba(255,255,255,0.8);">Perfect <span style="color:var(--pm-gold-light);">Match</span></span>
+        </a>
+        <p class="disclaimer-text">Perfect Match provides cosmetic color recommendations only and is not a medical or dermatological diagnostic tool.</p>
+      </div>
+      <div class="col-md-6 text-md-end d-flex flex-column justify-content-end">
+        <p class="pm-footer-bottom">© 2026 Perfect Match. BSIT Undergraduate Research Project.</p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js"></script>
+<script src="assets/js/app.js"></script>
+<script>
+  let cameraStream      = null;
+  let capturedImageData = null;
+  let selfieSegmenter   = null;
+  let latestSegmentationResults = null;
+  let segmenterQueue    = Promise.resolve();
+  let activeMode        = 'camera'; // 'camera' | 'upload'
+  let photoVerified     = false;    // true only after the server found exactly ONE face
+  let uploadCheckId     = 0;        // ignores out-of-date answers if the user changes photo quickly
+  let captureCheckId    = 0;
+
+  // Live camera face-watch state
+  let faceTimer = null, faceBusy = false, faceMisses = 0, liveFaceOk = false;
+  const liveCanvas = document.createElement('canvas');
+
+  // Segment the person locally in the browser and replace the image background with white.
+  function makeWhiteBackground(dataUrl) {
+    const operation = segmenterQueue.then(async () => {
+      if (typeof SelfieSegmentation !== 'function') {
+        throw new Error('Photo background processing could not be loaded. Check your internet connection and try again.');
+      }
+
+      if (!selfieSegmenter) {
+        selfieSegmenter = new SelfieSegmentation({
+          locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`
+        });
+        selfieSegmenter.setOptions({ modelSelection: 1 });
+        selfieSegmenter.onResults(results => {
+          latestSegmentationResults = results;
+        });
+      }
+
+      const image = new Image();
+      image.src = dataUrl;
+      await image.decode();
+
+      const scale = Math.min(1, 1600 / Math.max(image.naturalWidth, image.naturalHeight));
+      const width = Math.round(image.naturalWidth * scale);
+      const height = Math.round(image.naturalHeight * scale);
+      latestSegmentationResults = null;
+      await selfieSegmenter.send({ image });
+
+      const mask = latestSegmentationResults && latestSegmentationResults.segmentationMask;
+      if (!mask) throw new Error('Could not identify the person in this photo. Please try another photo.');
+
+      const maskCanvas = document.createElement('canvas');
+      maskCanvas.width = mask.width;
+      maskCanvas.height = mask.height;
+      const maskContext = maskCanvas.getContext('2d', { willReadFrequently: true });
+      maskContext.drawImage(mask, 0, 0);
+      const maskPixels = maskContext.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+      const pixelCount = maskCanvas.width * maskCanvas.height;
+      const visited = new Uint8Array(pixelCount);
+      const queue = new Int32Array(pixelCount);
+      const foreground = new Uint8Array(pixelCount);
+      for (let index = 0; index < pixelCount; index++) {
+        foreground[index] = maskPixels.data[index * 4 + 3] >= 96 ? 1 : 0;
+      }
+
+      // Bridge tiny mask gaps around hair, ears, and shoulders before dropping isolated noise.
+      for (let pass = 0; pass < 2; pass++) {
+        const expanded = foreground.slice();
+        for (let index = 0; index < pixelCount; index++) {
+          if (!foreground[index]) continue;
+          const x = index % maskCanvas.width;
+          const centerY = Math.floor(index / maskCanvas.width);
+          for (let dy = -1; dy <= 1; dy++) {
+            const y = centerY + dy;
+            if (y < 0 || y >= maskCanvas.height) continue;
+            for (let dx = -1; dx <= 1; dx++) {
+              const nx = x + dx;
+              if (nx >= 0 && nx < maskCanvas.width) expanded[y * maskCanvas.width + nx] = 1;
+            }
+          }
+        }
+        foreground.set(expanded);
+      }
+
+      let largestComponent = null;
+      let largestSize = 0;
+
+      for (let start = 0; start < pixelCount; start++) {
+        if (visited[start] || !foreground[start]) continue;
+
+        let head = 0;
+        let tail = 0;
+        queue[tail++] = start;
+        visited[start] = 1;
+        while (head < tail) {
+          const index = queue[head++];
+          const x = index % maskCanvas.width;
+          const left = index - 1;
+          if (x > 0 && !visited[left] && foreground[left]) {
+            visited[left] = 1;
+            queue[tail++] = left;
+          }
+          const right = index + 1;
+          if (x < maskCanvas.width - 1 && !visited[right] && foreground[right]) {
+            visited[right] = 1;
+            queue[tail++] = right;
+          }
+          const above = index - maskCanvas.width;
+          if (above >= 0 && !visited[above] && foreground[above]) {
+            visited[above] = 1;
+            queue[tail++] = above;
+          }
+          const below = index + maskCanvas.width;
+          if (below < pixelCount && !visited[below] && foreground[below]) {
+            visited[below] = 1;
+            queue[tail++] = below;
+          }
+        }
+
+        if (tail > largestSize) {
+          largestSize = tail;
+          largestComponent = queue.slice(0, tail);
+        }
+      }
+
+      if (!largestComponent) throw new Error('Could not identify the person in this photo. Please try another photo.');
+      const isForeground = new Uint8Array(pixelCount);
+      for (const index of largestComponent) isForeground[index] = 1;
+      for (let index = 0; index < pixelCount; index++) {
+        const alphaIndex = index * 4 + 3;
+        if (!isForeground[index]) {
+          maskPixels.data[alphaIndex] = 0;
+          continue;
+        }
+        const confidence = Math.max(0, Math.min(1, (maskPixels.data[alphaIndex] - 36) / 190));
+        const softened = confidence * confidence * (3 - 2 * confidence);
+        maskPixels.data[alphaIndex] = Math.round(softened * 255);
+      }
+      maskContext.putImageData(maskPixels, 0, 0);
+
+      const scaledMask = document.createElement('canvas');
+      scaledMask.width = width;
+      scaledMask.height = height;
+      const scaledMaskContext = scaledMask.getContext('2d');
+      scaledMaskContext.filter = 'blur(2.2px)';
+      scaledMaskContext.drawImage(maskCanvas, 0, 0, width, height);
+
+      const subjectCanvas = document.createElement('canvas');
+      subjectCanvas.width = width;
+      subjectCanvas.height = height;
+      const subjectContext = subjectCanvas.getContext('2d');
+      subjectContext.drawImage(image, 0, 0, width, height);
+      subjectContext.globalCompositeOperation = 'destination-in';
+      subjectContext.drawImage(scaledMask, 0, 0);
+
+      const outputCanvas = document.createElement('canvas');
+      outputCanvas.width = width;
+      outputCanvas.height = height;
+      const outputContext = outputCanvas.getContext('2d');
+      outputContext.fillStyle = '#fff';
+      outputContext.fillRect(0, 0, width, height);
+      outputContext.drawImage(subjectCanvas, 0, 0);
+      return outputCanvas.toDataURL('image/jpeg', 0.92);
+    });
+
+    segmenterQueue = operation.then(() => undefined, () => undefined);
+    return operation;
+  }
+
+  // Always start fresh: an old photo from a previous visit must not skip the face check.
+  sessionStorage.removeItem('pm_analysis_image');
+  sessionStorage.removeItem('pm_result');
+
+  // ---- Messages for every face problem ----
+  const FACE_MESSAGES = {
+    no_face:        { title: "We couldn't detect a face",
+                      text:  'Use a clear, front-facing photo with your whole face visible, in good light, and nothing covering it.' },
+    multiple_faces: { title: 'Multiple faces detected',
+                      text:  'Please make sure only one face appears in the photo.' },
+    invalid_image:  { title: 'Invalid image',
+                      text:  'Please use a JPG or PNG image.' },
+    lighting:       { title: 'Lighting may affect accuracy',
+                      text:  'Try a well-lit area with even light on your face for better results.' },
+    background_processing: { title: "Couldn't make the background white",
+                      text:  'Check your internet connection and try again. Your original photo was not analyzed.' },
+    offline:        { title: "Can't check your photo",
+                      text:  'The server is not reachable. Start it with "python app.py" and open the site at http://127.0.0.1:5000.' }
+  };
+
+  // Ask the backend: is there exactly one face in this picture?
+  async function checkFace(dataUrl) {
+    try {
+      const res = await fetch('/api/detect-face', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: dataUrl })
+      });
+      if (!res.ok) throw new Error('bad status ' + res.status);
+      return await res.json();
+    } catch (e) {
+      return { ok: false, code: 'offline' };
+    }
+  }
+
+  // ---- Show / hide problems ----
+  function clearCameraProblem() {
+    document.getElementById('cameraPhotoProblem').style.display = 'none';
+  }
+  function showCameraProblem(code) {
+    const m = FACE_MESSAGES[code] || FACE_MESSAGES.no_face;
+    document.getElementById('cameraPhotoProblemTitle').textContent = m.title;
+    document.getElementById('cameraPhotoProblemText').textContent  = m.text;
+    document.getElementById('cameraPhotoProblem').style.display = 'flex';
+  }
+
+  const UPLOAD_ALERTS = {
+    no_face: 'errorNoFace', multiple_faces: 'errorMultiFace',
+    background_processing: 'errorBackgroundProcessing',
+    lighting: 'errorLighting', invalid_image: 'errorInvalidImage', offline: 'errorInvalidImage'
+  };
+  function clearUploadProblem() {
+    document.getElementById('uploadErrorSection').style.display = 'none';
+    Object.values(UPLOAD_ALERTS).forEach(id => document.getElementById(id).style.display = 'none');
+  }
+  function showUploadProblem(code) {
+    clearUploadProblem();
+    const el = document.getElementById(UPLOAD_ALERTS[code] || 'errorNoFace');
+    if (code === 'offline') {   // reuse the generic alert with the "server offline" text
+      el.querySelector('div > div:nth-child(1)').textContent = FACE_MESSAGES.offline.title;
+      el.querySelector('div > div:nth-child(2)').textContent = FACE_MESSAGES.offline.text;
+    }
+    el.style.display = 'flex';
+    document.getElementById('uploadErrorSection').style.display = 'block';
+  }
+
+  // ---- Tab Switch ----
+  function switchTab(mode) {
+    activeMode = mode;
+    document.getElementById('tabCamera').classList.toggle('active', mode === 'camera');
+    document.getElementById('tabUpload').classList.toggle('active', mode === 'upload');
+    document.getElementById('panelCamera').classList.toggle('active', mode === 'camera');
+    document.getElementById('panelUpload').classList.toggle('active', mode === 'upload');
+    if (mode !== 'camera') stopCamera();
+  }
+
+  // ---- Live face watching (camera) ----
+  function setIndicator(id, color, text) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '<div class="dot ' + color + '"></div> ' + text;
+  }
+  function setCaptureEnabled(on) {
+    const b = document.getElementById('captureBtn');
+    b.disabled = !on;
+    b.style.opacity = on ? '' : '0.55';
+    b.style.cursor  = on ? '' : 'not-allowed';
+  }
+
+  function startFaceWatch() {
+    stopFaceWatch();
+    faceMisses = 0; liveFaceOk = false; faceBusy = false;
+    setCaptureEnabled(false);
+    setIndicator('faceDetectIndicator', 'yellow', 'Detecting face…');
+    faceTimer = setInterval(faceTick, 800);
+    faceTick();
+  }
+  function stopFaceWatch() {
+    if (faceTimer) { clearInterval(faceTimer); faceTimer = null; }
+    faceBusy = false;
+  }
+
+  async function faceTick() {
+    const video = document.getElementById('cameraVideo');
+    if (faceBusy || !cameraStream || !video.videoWidth) return;
+    faceBusy = true;
+
+    // send a small copy of the current frame (fast)
+    const scale = Math.min(1, 480 / video.videoWidth);
+    liveCanvas.width  = Math.round(video.videoWidth  * scale);
+    liveCanvas.height = Math.round(video.videoHeight * scale);
+    liveCanvas.getContext('2d').drawImage(video, 0, 0, liveCanvas.width, liveCanvas.height);
+    const result = await checkFace(liveCanvas.toDataURL('image/jpeg', 0.7));
+
+    faceBusy = false;
+    if (!cameraStream) return;   // camera was stopped while we were waiting
+
+    if (result.code === 'offline') {
+      liveFaceOk = false;
+      setCaptureEnabled(false);
+      setIndicator('faceDetectIndicator', 'yellow', 'Server not reachable');
+      showCameraProblem('offline');
+      return;
+    }
+
+    if (result.ok) {
+      faceMisses = 0;
+      liveFaceOk = true;
+      setCaptureEnabled(true);
+      setIndicator('faceDetectIndicator', 'green', 'Face detected');
+      if (result.lighting === 'dark') {
+        setIndicator('lightingIndicator', 'yellow', 'Too dark');
+        showCameraProblem('lighting');
+      } else if (result.lighting === 'bright') {
+        setIndicator('lightingIndicator', 'yellow', 'Too bright');
+        showCameraProblem('lighting');
+      } else {
+        setIndicator('lightingIndicator', 'green', 'Good lighting');
+        clearCameraProblem();
+      }
+    } else {
+      // Face detectors flicker, so only react after 2 misses in a row.
+      faceMisses++;
+      if (faceMisses >= 2) {
+        liveFaceOk = false;
+        setCaptureEnabled(false);
+        if (result.code === 'multiple_faces') {
+          setIndicator('faceDetectIndicator', 'red', 'Multiple faces');
+          showCameraProblem('multiple_faces');
+        } else {
+          setIndicator('faceDetectIndicator', 'red', 'No face detected');
+          showCameraProblem('no_face');
+        }
+      }
+    }
+  }
+
+  // ---- Camera ----
+  async function startCamera() {
+    const placeholder   = document.getElementById('cameraPlaceholder');
+    const video         = document.getElementById('cameraVideo');
+    const faceGuide     = document.getElementById('faceGuide');
+    const overlayBar    = document.getElementById('camOverlayBar');
+    const cameraControls= document.getElementById('cameraControls');
+    const captureControls = document.getElementById('captureControls');
+    const cameraError   = document.getElementById('cameraError');
+    const instructions  = document.getElementById('cameraInstructions');
+
+    try {
+      cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } } });
+      video.srcObject = cameraStream;
+      video.style.display = 'block';
+      placeholder.style.display = 'none';
+      faceGuide.style.display = 'flex';
+      overlayBar.style.display = 'flex';
+      cameraControls.style.display = 'none';
+      captureControls.style.display = 'flex';
+      cameraError.style.display = 'none';
+      instructions.style.display = 'flex';
+      clearCameraProblem();
+
+      // REAL face detection (replaces the old fake 1.5-second timer)
+      startFaceWatch();
+    } catch(err) {
+      cameraError.style.display = 'flex';
+      instructions.style.display = 'none';
+    }
+  }
+
+  function stopCamera() {
+    stopFaceWatch();
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(t => t.stop());
+      cameraStream = null;
+    }
+    const video = document.getElementById('cameraVideo');
+    video.style.display = 'none';
+    video.srcObject = null;
+    document.getElementById('cameraPlaceholder').style.display = 'flex';
+    document.getElementById('faceGuide').style.display = 'none';
+    document.getElementById('camOverlayBar').style.display = 'none';
+    document.getElementById('cameraControls').style.display = 'flex';
+    document.getElementById('captureControls').style.display = 'none';
+    clearCameraProblem();
+    setIndicator('faceDetectIndicator', 'yellow', 'Detecting face…');
+    setIndicator('lightingIndicator', 'green', 'Good lighting');
+  }
+
+  async function capturePhoto() {
+    if (!liveFaceOk) {
+      showToast('No face detected yet. Please look at the camera.', 'warning');
+      return;
+    }
+    const video  = document.getElementById('cameraVideo');
+    const canvas = document.getElementById('cameraCanvas');
+    canvas.width  = video.videoWidth  || 640;
+    canvas.height = video.videoHeight || 480;
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+    const rawImageData = canvas.toDataURL('image/jpeg', 0.92);
+    const myId = ++captureCheckId;
+
+    document.getElementById('captureControls').style.display = 'none';
+    document.getElementById('cameraControls').style.display = 'none';
+    document.getElementById('capturedPreviewSection').style.display = 'block';
+    stopCamera();
+    document.getElementById('cameraControls').style.display = 'none';
+    document.getElementById('cameraPlaceholder').style.display = 'none';
+    canvas.style.display = 'block';
+
+    // Double-check the final photo (the person may have moved at the last moment)
+    photoVerified = false;
+    sessionStorage.removeItem('pm_analysis_image');
+    const analyzeBtn = document.getElementById('analyzeCaptureBtn');
+    const preview = document.getElementById('capturedPreview');
+    const processingOverlay = document.getElementById('captureProcessingOverlay');
+    analyzeBtn.disabled = true;
+    analyzeBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Making background white…';
+    preview.src = rawImageData;
+    preview.classList.add('processing');
+    processingOverlay.classList.add('visible');
+    capturedImageData = null;
+    try {
+      capturedImageData = await makeWhiteBackground(rawImageData);
+    } catch (error) {
+      if (myId !== captureCheckId) return;
+      preview.classList.remove('processing');
+      processingOverlay.classList.remove('visible');
+      showCameraProblem('background_processing');
+      document.getElementById('capturedPreviewSection').style.display = 'none';
+      document.getElementById('cameraControls').style.display = 'flex';
+      analyzeBtn.innerHTML = '<i class="bi bi-arrow-right-circle-fill"></i> Analyze This Photo';
+      showToast(error.message || 'Could not make the photo background white. Please try again.', 'error');
+      return;
+    }
+    if (myId !== captureCheckId) return;
+
+    // Analyze only the processed image so the preview, results, and saved photo match.
+    preview.onload = () => {
+      preview.classList.remove('processing');
+      processingOverlay.classList.remove('visible');
+    };
+    preview.src = capturedImageData;
+    if (preview.complete) {
+      preview.classList.remove('processing');
+      processingOverlay.classList.remove('visible');
+    }
+    const result = await checkFace(capturedImageData);
+    if (myId !== captureCheckId) return;
+
+    if (result.ok) {
+      photoVerified = true;
+      sessionStorage.setItem('pm_analysis_image', capturedImageData);
+      analyzeBtn.disabled = false;
+      analyzeBtn.innerHTML = '<i class="bi bi-arrow-right-circle-fill"></i> Analyze This Photo';
+      if (result.lighting && result.lighting !== 'ok') showCameraProblem('lighting');
+    } else {
+      analyzeBtn.innerHTML = '<i class="bi bi-arrow-right-circle-fill"></i> Analyze This Photo';
+      showCameraProblem(result.code || 'no_face');
+      showToast('Please retake your photo.', 'warning');
+    }
+  }
+
+  function retakeCamera() {
+    captureCheckId++;
+    document.getElementById('captureProcessingOverlay').classList.remove('visible');
+    document.getElementById('capturedPreview').classList.remove('processing');
+    document.getElementById('capturedPreviewSection').style.display = 'none';
+    document.getElementById('cameraCanvas').style.display = 'none';
+    document.getElementById('cameraPlaceholder').style.display = 'flex';
+    document.getElementById('cameraControls').style.display = 'flex';
+    clearCameraProblem();
+    capturedImageData = null;
+    photoVerified = false;
+    sessionStorage.removeItem('pm_analysis_image');
+  }
+
+  // ---- Upload ----
+  document.addEventListener('DOMContentLoaded', () => {
+    initDropZone(
+      document.getElementById('dropZone'),
+      document.getElementById('fileInput'),
+      async (file, sourceUrl) => {
+        photoVerified = false;
+        sessionStorage.removeItem('pm_analysis_image');
+        document.getElementById('uploadFileName').textContent = file.name + ' (' + (file.size / 1024).toFixed(0) + ' KB)';
+        document.getElementById('uploadPreviewSection').style.display = 'block';
+        document.getElementById('dropZone').style.display = 'none';
+        clearUploadProblem();
+
+        // Check for a face before allowing the analysis
+        const myId = ++uploadCheckId;
+        const status = document.getElementById('uploadCheckStatus');
+        const analyzeBtn = document.getElementById('analyzeUploadBtn');
+        const preview = document.getElementById('uploadPreview');
+        const processingOverlay = document.getElementById('uploadProcessingOverlay');
+        analyzeBtn.disabled = true;
+        status.textContent = 'Making background white…';
+        preview.src = sourceUrl;
+        preview.classList.add('processing');
+        processingOverlay.classList.add('visible');
+
+        let processedUrl;
+        try {
+          processedUrl = await makeWhiteBackground(sourceUrl);
+        } catch (error) {
+          if (myId !== uploadCheckId) return;
+          preview.classList.remove('processing');
+          processingOverlay.classList.remove('visible');
+          status.textContent = '';
+          showUploadProblem('background_processing');
+          showToast(error.message || 'Could not make the photo background white. Please choose another photo.', 'error');
+          return;
+        }
+        if (myId !== uploadCheckId) return;
+        preview.onload = () => {
+          preview.classList.remove('processing');
+          processingOverlay.classList.remove('visible');
+        };
+        preview.src = processedUrl;
+        if (preview.complete) {
+          preview.classList.remove('processing');
+          processingOverlay.classList.remove('visible');
+        }
+        status.textContent = 'Checking for a face…';
+
+        const result = await checkFace(processedUrl);
+        if (myId !== uploadCheckId) return;   // user already picked another photo
+
+        if (result.ok) {
+          photoVerified = true;
+          sessionStorage.setItem('pm_analysis_image', processedUrl);
+          analyzeBtn.disabled = false;
+          status.textContent = '✓ Face detected';
+          status.style.color = '#4CAF50';
+          if (result.lighting && result.lighting !== 'ok') showUploadProblem('lighting');
+        } else {
+          status.textContent = '';
+          showUploadProblem(result.code || 'no_face');
+          showToast('Please upload a different photo.', 'warning');
+        }
+      }
+    );
+
+    // Show guest note if not logged in
+    if (!Auth.check()) {
+      const guestNote = document.getElementById('guestNote');
+      if (guestNote) guestNote.style.display = 'block';
+    }
+  });
+
+  function changeImage() {
+    uploadCheckId++;
+    document.getElementById('uploadProcessingOverlay').classList.remove('visible');
+    document.getElementById('uploadPreview').classList.remove('processing');
+    document.getElementById('uploadPreviewSection').style.display = 'none';
+    document.getElementById('dropZone').style.display = 'flex';
+    document.getElementById('fileInput').value = '';
+    document.getElementById('uploadCheckStatus').textContent = '';
+    document.getElementById('uploadCheckStatus').style.color = '';
+    clearUploadProblem();
+    photoVerified = false;
+    sessionStorage.removeItem('pm_analysis_image');
+  }
+
+  // ---- Proceed ----
+  function proceedToAnalysis() {
+    const imageData = sessionStorage.getItem('pm_analysis_image');
+    if (!imageData) {
+      showToast('Please capture or upload a photo first.', 'warning');
+      return;
+    }
+    if (!photoVerified) {
+      showToast('We could not find a face in this photo. Please try another one.', 'warning');
+      return;
+    }
+    // Advance step indicator visually
+    document.getElementById('step1').classList.remove('active');
+    document.getElementById('step1').classList.add('completed');
+    document.getElementById('conn1').classList.add('filled');
+    document.getElementById('step2').classList.add('completed');
+    document.getElementById('conn2').classList.add('filled');
+    document.getElementById('step3').classList.add('active');
+
+    showToast('Starting analysis…', 'info', 1500);
+    setTimeout(() => { window.location.href = 'analyzing.html'; }, 800);
+  }
+
+  // Clean up camera on page leave
+  window.addEventListener('beforeunload', stopCamera);
+</script>
+</body>
+</html>

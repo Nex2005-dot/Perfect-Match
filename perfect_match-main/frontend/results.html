@@ -1,0 +1,1620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your Results — Perfect Match</title>
+  <meta name="description" content="View your personalized makeup color palette based on your detected skin tone and type." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+  <link href="assets/css/main.css" rel="stylesheet" />
+  <style>
+    .result-image-wrap {
+      position: relative;
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      aspect-ratio: 3/4;
+      background: var(--bg-soft);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .result-image-wrap img { width:100%; height:100%; object-fit:cover; }
+
+    .analysis-summary-card {
+      background: var(--pm-white);
+      border-radius: var(--radius-xl);
+      border: 1px solid var(--border-light);
+      box-shadow: var(--shadow-md);
+      padding: 1.75rem;
+      height: 100%;
+    }
+
+    .summary-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      padding: 0.85rem 0;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .summary-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .summary-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-light);
+    }
+    .summary-value {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    .summary-sub {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .palette-section {
+      background: var(--pm-white);
+      border-radius: var(--radius-xl);
+      border: 1px solid var(--border-light);
+      padding: 1.75rem;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .palette-category-header {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      margin-bottom: 1.1rem;
+    }
+    .palette-category-icon {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      background: var(--bg-soft);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+      color: var(--pm-gold);
+    }
+
+    .swatch-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: 0.85rem;
+    }
+
+    .swatch-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 7px;
+      padding: 0.9rem 0.7rem;
+      background: var(--bg-soft);
+      border-radius: var(--radius-md);
+      border: 1px solid transparent;
+      transition: var(--transition);
+      cursor: pointer;
+      text-align: center;
+    }
+    .swatch-item:hover {
+      border-color: var(--pm-tan);
+      background: var(--pm-white);
+      box-shadow: var(--shadow-sm);
+      transform: translateY(-2px);
+    }
+    .swatch-item.selected {
+      border-color: var(--pm-gold);
+      background: var(--pm-white);
+      box-shadow: 0 0 0 3px rgba(184,147,90,0.1);
+    }
+    .swatch-dot {
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      border: 3px solid rgba(255,255,255,0.85);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      flex-shrink: 0;
+    }
+    .swatch-name  { font-size: 0.78rem; font-weight: 700; color: var(--text-primary); }
+    .swatch-hex   { font-size: 0.68rem; color: var(--text-muted); font-family: 'Courier New', monospace; }
+    .swatch-note  { font-size: 0.7rem; color: var(--text-secondary); line-height: 1.4; }
+
+    /* Virtual Try-On */
+    .tryon-section {
+      background: var(--pm-white);
+      border-radius: var(--radius-xl);
+      border: 1px solid var(--border-light);
+      padding: 1.75rem;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .tryon-canvas {
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      background: var(--bg-soft);
+      position: relative;
+      aspect-ratio: 3/4;
+      max-width: 340px;
+      width: 100%;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .tryon-canvas img { width:100%; height:100%; object-fit:cover; }
+
+    .tryon-makeup-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .tryon-badge {
+      position: absolute;
+      top: 12px; left: 12px;
+      background: rgba(61,35,20,0.65);
+      color: white;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 4px 12px;
+      border-radius: var(--radius-full);
+    }
+
+    .tryon-disclaimer {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      background: linear-gradient(transparent, rgba(0,0,0,0.5));
+      padding: 1rem;
+      color: rgba(255,255,255,0.75);
+      font-size: 0.7rem;
+      text-align: center;
+    }
+
+    .makeup-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.7rem 0;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .makeup-toggle-row:last-child { border-bottom: none; }
+
+    .makeup-toggle-label {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .makeup-swatch-mini {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.9);
+      box-shadow: var(--shadow-xs);
+      flex-shrink: 0;
+    }
+
+    /* Recommendation cards */
+    .rec-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 1rem;
+    }
+
+    .rec-card-inner {
+      background: var(--pm-white);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      transition: var(--transition);
+      height: 100%;
+    }
+    .rec-card-inner:hover {
+      border-color: var(--pm-tan);
+      box-shadow: var(--shadow-sm);
+      transform: translateY(-2px);
+    }
+    .rec-cat-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--pm-gold);
+      margin-bottom: 0.65rem;
+    }
+    .rec-swatch-large {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      border: 3px solid rgba(255,255,255,0.9);
+      box-shadow: var(--shadow-sm);
+      flex-shrink: 0;
+    }
+
+    /* ===== Try-On Studio ===== */
+    .studio-grid { display: block; }
+    .studio-photo-col { display: contents; }
+    #studioControls { margin-top: 1rem; }
+    @media (min-width: 992px) {
+      .studio-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 1.5rem; align-items: start; }
+      .studio-photo-col { display: block; align-self: stretch; }
+      #studioControls { margin-top: 0; }
+    }
+    .studio-sticky { position: sticky; top: 84px; }
+    .studio-stage {
+      background: var(--bg-soft);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-xl);
+      padding: 0.5rem;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 220px;
+      position: relative;
+    }
+    .studio-stage canvas {
+      display: block;
+      width: auto; height: auto;
+      max-width: 100%;
+      max-height: calc(100vh - 200px);
+      border-radius: var(--radius-lg);
+      touch-action: none;
+    }
+    .studio-drag-hint {
+      position:absolute; top:0.8rem; left:50%; transform:translateX(-50%); z-index:2;
+      width:max-content; max-width:calc(100% - 1rem); padding:0.4rem 0.7rem;
+      border:1px solid var(--border-light); border-radius:var(--radius-full);
+      background:rgba(255,255,255,0.94); box-shadow:var(--shadow-sm);
+      font-size:0.72rem; color:var(--text-muted); text-align:center; pointer-events:none;
+    }
+    .studio-drag-hint button { border:0; padding:0; background:none; color:var(--pm-gold); font:inherit; font-weight:700; text-decoration:underline; pointer-events:auto; }
+    .studio-status {
+      font-size: 0.72rem; color: var(--text-muted);
+      padding: 0.45rem 0.5rem 0.2rem; text-align: center;
+    }
+    .studio-status.ok   { color: #4a8a5c; }
+    .studio-status.warn { color: #a8782e; }
+    .studio-empty { text-align:center; color: var(--text-light); padding: 2rem 1rem; font-size: 0.85rem; }
+    .studio-actions { display:flex; gap:0.5rem; margin-top:0.75rem; flex-wrap:wrap; }
+    .studio-actions button { flex:1; justify-content:center; font-size:0.8rem; padding:0.55rem 0.5rem; user-select:none; -webkit-user-select:none; }
+
+    /* swipeable shade row */
+    .shade-row {
+      display: flex; gap: 0.6rem;
+      overflow-x: auto; scroll-snap-type: x proximity;
+      padding: 0.35rem 0.25rem 0.75rem;
+      -webkit-overflow-scrolling: touch;
+    }
+    .shade-chip {
+      flex: 0 0 auto; scroll-snap-align: start;
+      width: 96px; padding: 0.7rem 0.4rem;
+      background: var(--bg-soft);
+      border: 1.5px solid transparent;
+      border-radius: var(--radius-md);
+      text-align: center; cursor: pointer;
+      transition: var(--transition);
+    }
+    .shade-chip:hover { border-color: var(--pm-tan); background: var(--pm-white); }
+    .shade-chip.selected {
+      border-color: var(--pm-gold); background: var(--pm-white);
+      box-shadow: 0 0 0 3px rgba(184,147,90,0.12);
+    }
+    .shade-chip .dot {
+      width: 44px; height: 44px; border-radius: 50%; margin: 0 auto 6px;
+      border: 3px solid rgba(255,255,255,0.9);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .shade-chip .nm { font-size: 0.74rem; font-weight: 700; color: var(--text-primary); line-height: 1.25; }
+    .shade-chip .hx { font-size: 0.64rem; color: var(--text-muted); font-family: 'Courier New', monospace; }
+    .shade-readout { font-size: 0.78rem; color: var(--text-secondary); margin: 0 0 0.9rem; line-height: 1.45; }
+    .shade-readout b { color: var(--text-primary); }
+
+    /* range sliders */
+    .range-row { display:flex; align-items:center; gap:0.85rem; margin-top:0.4rem; }
+    .range-row label { font-size:0.75rem; font-weight:600; color:var(--text-muted); width:70px; flex-shrink:0; margin:0; }
+    .range-row output { font-size:0.75rem; font-weight:700; color:var(--text-primary); width:38px; text-align:right; flex-shrink:0; }
+    .pm-range {
+      -webkit-appearance: none; appearance: none;
+      flex: 1; height: 8px; border-radius: 99px; outline: none; cursor: pointer;
+      background: linear-gradient(to right, var(--pm-gold) var(--pct, 50%), #E6D6C3 var(--pct, 50%));
+    }
+    .pm-range::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%;
+      background: #fff; border: 3px solid var(--pm-gold);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2); cursor: grab;
+    }
+    .pm-range::-moz-range-thumb {
+      width: 18px; height: 18px; border-radius: 50%;
+      background: #fff; border: 3px solid var(--pm-gold);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2); cursor: grab;
+    }
+    .pm-range:active::-webkit-slider-thumb { cursor: grabbing; transform: scale(1.1); }
+    .studio-card.off .shade-row, .studio-card.off .range-row, .studio-card.off .shade-readout { opacity: 0.45; }
+
+    @media (max-width: 991px) {
+      .studio-sticky { top: 64px; z-index: 20; background: var(--bg-main); padding: 0.25rem 0 0.6rem; }
+      .studio-stage canvas { max-height: 36vh; }
+      .studio-actions { margin-top: 0.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===================== NAVBAR ===================== -->
+<nav class="pm-navbar navbar navbar-expand-lg">
+  <div class="container">
+    <a class="navbar-brand pm-navbar-brand" href="index.html">
+      <div class="pm-logo-mark">PM</div>
+      <span class="pm-logo-text">Perfect <span>Match</span></span>
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#pmNavbar">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="pmNavbar">
+      <ul class="navbar-nav mx-auto gap-1">
+        <li class="nav-item"><a class="nav-link" href="index.html">Home</a></li>
+        <li class="nav-item"><a class="nav-link" href="try-it.html">Try It</a></li>
+        <li class="nav-item" data-show="auth"><a class="nav-link" href="history.html">My Results</a></li>
+        <li class="nav-item"><a class="nav-link" href="index.html#how-it-works">How It Works</a></li>
+      </ul>
+      <div class="d-flex align-items-center gap-2 mt-3 mt-lg-0">
+        <a href="login.html" class="nav-link btn-nav-login" data-show="guest">Login</a>
+        <a href="register.html" class="nav-link btn-nav-signup" data-show="guest">Sign Up</a>
+        <div class="d-none align-items-center gap-2" data-show="auth" style="display:none!important;">
+          <a href="history.html" class="btn-pm-ghost" style="font-size:0.875rem;"><i class="bi bi-clock-history"></i> My Results</a>
+          <a href="profile.html"><div class="pm-logo-mark" style="width:30px;height:30px;font-size:0.75rem;" data-user-initials>A</div></a>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ===================== PAGE HEADER ===================== -->
+<div class="page-header">
+  <div class="container">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+      <div>
+        <!-- Steps -->
+        <div class="pm-steps mb-3" style="justify-content:flex-start;">
+          <div class="pm-step completed"><div class="pm-step-num"><i class="bi bi-check"></i></div><div class="pm-step-label">Capture</div></div>
+          <div class="pm-step-connector filled"></div>
+          <div class="pm-step completed"><div class="pm-step-num"><i class="bi bi-check"></i></div><div class="pm-step-label">Align</div></div>
+          <div class="pm-step-connector filled"></div>
+          <div class="pm-step completed"><div class="pm-step-num"><i class="bi bi-check"></i></div><div class="pm-step-label">Analyze</div></div>
+          <div class="pm-step-connector filled"></div>
+          <div class="pm-step active"><div class="pm-step-num"><i class="bi bi-stars"></i></div><div class="pm-step-label">Results</div></div>
+        </div>
+        <h1 style="font-family:var(--font-display);font-size:clamp(1.5rem,3vw,2rem);font-weight:700;color:var(--text-primary);margin-bottom:0.3rem;">Your Perfect Match</h1>
+        <p style="color:var(--text-muted);font-size:0.875rem;margin:0;">September 8, 2026 &nbsp;·&nbsp; <span id="resultSkinTone">Light Morena</span> &nbsp;·&nbsp; <span id="resultSkinType">Combination</span></p>
+      </div>
+      <!-- Actions -->
+      <div class="d-flex flex-wrap gap-2" id="resultActions">
+        <button class="btn-pm-secondary" style="font-size:0.82rem;padding:0.6rem 1.1rem;" onclick="downloadPalette()">
+          <i class="bi bi-download"></i> Download Palette
+        </button>
+        <button class="btn-pm-primary" style="font-size:0.82rem;padding:0.6rem 1.1rem;" onclick="saveResult()" id="saveBtn">
+          <i class="bi bi-bookmark-plus-fill"></i> Save Result
+        </button>
+        <a href="try-it.html" class="btn-pm-ghost" style="font-size:0.82rem;padding:0.6rem 1rem;">
+          <i class="bi bi-arrow-counterclockwise"></i> Try Again
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<main class="section-pad-sm">
+  <div class="container">
+
+    <!-- ===== ROW 1: Image + Analysis Summary ===== -->
+    <div class="row g-4 mb-4">
+      <!-- Image -->
+      <div class="col-md-4 col-lg-3">
+        <div class="result-image-wrap">
+          <img id="resultImage" src="" alt="Your photo" style="display:none;" />
+          <div id="resultImagePlaceholder" style="display:flex;flex-direction:column;align-items:center;gap:0.5rem;color:var(--text-light);">
+            <i class="bi bi-person-fill" style="font-size:3rem;"></i>
+            <span style="font-size:0.8rem;">Your Photo</span>
+          </div>
+        </div>
+        <!-- Skin tone mini scale -->
+        <div style="margin-top:0.85rem;">
+          <div style="font-size:0.68rem;color:var(--text-muted);margin-bottom:4px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;">Tone Scale</div>
+          <div class="skin-tone-scale" style="height:16px;">
+            <div style="background:#F5DEB3;border-radius:8px 0 0 8px;flex:1;"></div>
+            <div style="background:#EAC592;flex:1;"></div>
+            <div style="background:#D4A76A;flex:1;outline:2.5px solid var(--pm-gold);outline-offset:2px;border-radius:2px;"></div>
+            <div style="background:#C08C50;flex:1;"></div>
+            <div style="background:#A07038;flex:1;"></div>
+            <div style="background:#7A5030;border-radius:0 8px 8px 0;flex:1;"></div>
+          </div>
+          <div style="font-size:0.7rem;color:var(--pm-gold);font-weight:600;margin-top:4px;text-align:center;">Light Morena</div>
+        </div>
+      </div>
+
+      <!-- Analysis summary -->
+      <div class="col-md-8 col-lg-4">
+        <div class="analysis-summary-card">
+          <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--pm-gold);margin-bottom:1rem;">
+            <i class="bi bi-cpu-fill me-1"></i> Analysis Summary
+          </div>
+
+          <div class="summary-row">
+            <div class="summary-label">Detected Skin Tone</div>
+            <div class="summary-value">Light Morena</div>
+            <div class="summary-sub">Category: Medium-Light Filipino Complexion</div>
+          </div>
+
+          <div class="summary-row">
+            <div class="summary-label">Skin Type</div>
+            <div class="summary-value">Combination</div>
+            <div class="summary-sub">Oily T-zone with normal to dry cheeks</div>
+          </div>
+
+          <div class="summary-row">
+            <div class="summary-label">Undertone</div>
+            <div class="summary-value" style="display:flex;align-items:center;gap:8px;">
+              Warm
+              <span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:linear-gradient(135deg,#D4A76A,#C08C50);box-shadow:var(--shadow-xs);"></span>
+            </div>
+            <div class="summary-sub">Golden-yellow undertone in skin</div>
+          </div>
+
+          <!-- Confidence indicator -->
+          <div class="summary-row">
+            <div class="summary-label">Confidence <span style="font-size:0.65rem;color:var(--text-light);text-transform:none;letter-spacing:0;">(demo value)</span></div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:4px;">
+              <div class="pm-progress flex-grow-1"><div class="pm-progress-bar" id="confidenceBar" style="width:0%;"></div></div>
+              <span style="font-size:0.82rem;font-weight:700;color:var(--text-primary);min-width:36px;">87%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick palette preview -->
+      <div class="col-lg-5">
+        <div class="analysis-summary-card" style="display:flex;flex-direction:column;gap:1rem;">
+          <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--pm-gold);">
+            <i class="bi bi-palette2 me-1"></i> Palette Preview
+          </div>
+          <div class="row g-2">
+            <div class="col-6">
+              <div style="font-size:0.68rem;color:var(--text-muted);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">Foundation</div>
+              <div style="display:flex;gap:5px;">
+                <div style="width:32px;height:32px;border-radius:50%;background:#F5DEB3;border:2px solid white;box-shadow:var(--shadow-xs);" title="Warm Ivory"></div>
+                <div style="width:32px;height:32px;border-radius:50%;background:#D4A76A;border:2px solid white;box-shadow:var(--shadow-xs);" title="Golden Beige"></div>
+                <div style="width:32px;height:32px;border-radius:50%;background:#C8A882;border:2px solid white;box-shadow:var(--shadow-xs);" title="Soft Sand"></div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div style="font-size:0.68rem;color:var(--text-muted);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">Blush</div>
+              <div style="display:flex;gap:5px;">
+                <div style="width:32px;height:32px;border-radius:50%;background:#FFAB76;border:2px solid white;box-shadow:var(--shadow-xs);" title="Warm Peach"></div>
+                <div style="width:32px;height:32px;border-radius:50%;background:#E8835A;border:2px solid white;box-shadow:var(--shadow-xs);" title="Coral Flush"></div>
+                <div style="width:32px;height:32px;border-radius:50%;background:#D4967A;border:2px solid white;box-shadow:var(--shadow-xs);" title="Rose Nude"></div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div style="font-size:0.68rem;color:var(--text-muted);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">Lip</div>
+              <div style="display:flex;gap:5px;">
+                <div style="width:32px;height:32px;border-radius:50%;background:#B76E79;border:2px solid white;box-shadow:var(--shadow-xs);" title="Warm Rose"></div>
+                <div style="width:32px;height:32px;border-radius:50%;background:#C0614B;border:2px solid white;box-shadow:var(--shadow-xs);" title="Terracotta"></div>
+                <div style="width:32px;height:32px;border-radius:50%;background:#A07468;border:2px solid white;box-shadow:var(--shadow-xs);" title="Nude Mauve"></div>
+                <div style="width:32px;height:32px;border-radius:50%;background:#8B4049;border:2px solid white;box-shadow:var(--shadow-xs);" title="Berry Bronze"></div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div style="font-size:0.68rem;color:var(--text-muted);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">Eyeshadow</div>
+              <div style="display:flex;gap:5px;">
+                <div style="width:32px;height:32px;border-radius:50%;background:#8B6252;border:2px solid white;box-shadow:var(--shadow-xs);" title="Bronze Glow"></div>
+                <div style="width:32px;height:32px;border-radius:50%;background:#D4B896;border:2px solid white;box-shadow:var(--shadow-xs);" title="Champagne"></div>
+                <div style="width:32px;height:32px;border-radius:50%;background:#B87333;border:2px solid white;box-shadow:var(--shadow-xs);" title="Copper Shimmer"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PERSONALIZED PALETTE + LIVE TRY-ON STUDIO ===== -->
+    <div class="mb-4" id="studio">
+      <div class="mb-3">
+        <h2 class="section-title" style="font-size:1.4rem;">Your Personalized Color Palette</h2>
+        <p style="font-size:0.85rem;color:var(--text-muted);margin:0;">Swipe through the shades, tap one to try it, then drag the sliders. Your photo updates instantly while you choose.</p>
+        <p id="apiShadeStatus" role="status" style="font-size:0.78rem;color:var(--text-muted);margin:0.4rem 0 0;"></p>
+        <p style="font-size:0.72rem;color:var(--text-light);margin:0.2rem 0 0;">
+          Extra swatches are color matches from the <a href="https://makeup-api.herokuapp.com/" target="_blank" rel="noopener noreferrer">Makeup API</a>; compare them on your photo before choosing.
+        </p>
+      </div>
+
+      <div class="studio-grid">
+        <!-- Sticky live photo -->
+        <div class="studio-photo-col">
+          <div class="studio-sticky">
+            <div class="studio-stage">
+              <canvas id="studioCanvas" width="10" height="10" aria-label="Photo preview. Drag the lipstick to reposition it." style="display:none;"></canvas>
+              <div id="studioEmpty" class="studio-empty">
+                <i class="bi bi-person-bounding-box" style="font-size:2.5rem;display:block;margin-bottom:0.5rem;"></i>
+                Your photo appears here.<br>
+                <a href="try-it.html" style="color:var(--pm-gold);font-weight:600;">Take or upload a photo</a>
+              </div>
+              <div id="lipDragHint" class="studio-drag-hint" style="display:none;">
+                Drag anywhere on the photo to move the lipstick.
+                <button type="button" id="resetLipPosition">Reset position</button>
+              </div>
+              <div class="studio-status" id="studioStatus">Loading your photo…</div>
+            </div>
+            <div class="studio-actions">
+              <button type="button" class="btn-pm-secondary" id="compareBtn" title="Press and hold to see your original photo">
+                <i class="bi bi-eye"></i> Hold to compare
+              </button>
+              <button type="button" class="btn-pm-ghost" id="resetBtn"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
+              <button type="button" class="btn-pm-ghost" id="downloadImgBtn"><i class="bi bi-download"></i> Save image</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Controls (built by JavaScript from your palette) -->
+        <div id="studioControls"></div>
+      </div>
+    </div>
+
+    <!-- ===== SAVE PROMPT (Guest) ===== -->
+    <div class="pm-alert pm-alert-warning mb-4" id="guestSavePrompt" style="display:none;">
+      <i class="bi bi-person-dash flex-shrink-0" style="font-size:1.1rem;"></i>
+      <div class="flex-grow-1">
+        <div style="font-weight:600;margin-bottom:3px;">Log in or create an account to unlock all shades, save your history, and save your photo.</div>
+        <div style="font-size:0.82rem;">Register to keep a record of all your skin analyses and personalized palettes.</div>
+      </div>
+      <a href="register.html" class="btn-pm-primary" style="font-size:0.8rem;padding:0.5rem 1rem;flex-shrink:0;">
+        <i class="bi bi-person-plus-fill"></i> Sign Up Free
+      </a>
+    </div>
+
+    <!-- ===== BOTTOM ACTIONS ===== -->
+    <div class="d-flex flex-wrap gap-3 justify-content-center mt-2 mb-2">
+      <button class="btn-pm-primary" onclick="saveResult()" style="padding:0.8rem 2rem;">
+        <i class="bi bi-bookmark-plus-fill"></i> Save Result
+      </button>
+      <a href="try-it.html" class="btn-pm-secondary" style="padding:0.8rem 2rem;">
+        <i class="bi bi-arrow-counterclockwise"></i> Try Again
+      </a>
+      <a href="history.html" class="btn-pm-secondary" data-show="auth" style="padding:0.8rem 2rem;display:none;">
+        <i class="bi bi-clock-history"></i> View My Results
+      </a>
+    </div>
+
+    <!-- Disclaimer -->
+    <p style="text-align:center;font-size:0.75rem;color:var(--text-light);margin-top:1.5rem;line-height:1.6;max-width:60ch;margin-left:auto;margin-right:auto;">
+      Perfect Match provides cosmetic color recommendations only and is not a medical or dermatological diagnostic tool. Results are based on image processing and may vary.
+    </p>
+
+  </div>
+</main>
+
+<!-- ===================== FOOTER ===================== -->
+<footer class="pm-footer">
+  <div class="container">
+    <div class="row gy-3">
+      <div class="col-md-6">
+        <a href="index.html" class="d-flex align-items-center gap-2 text-decoration-none mb-2">
+          <div class="pm-logo-mark" style="width:28px;height:28px;font-size:0.75rem;">PM</div>
+          <span class="pm-logo-text" style="color:rgba(255,255,255,0.8);">Perfect <span style="color:var(--pm-gold-light);">Match</span></span>
+        </a>
+        <p class="disclaimer-text">Perfect Match provides cosmetic color recommendations only and is not a medical or dermatological diagnostic tool.</p>
+      </div>
+      <div class="col-md-6 d-flex justify-content-md-end align-items-end">
+        <p class="pm-footer-bottom">© 2026 Perfect Match. BSIT Undergraduate Research Project.</p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="assets/js/app.js"></script>
+<script>
+  /* ============================================================
+     Result image + confidence bar + guest prompt (unchanged)
+     ============================================================ */
+  const imgData = sessionStorage.getItem('pm_analysis_image');
+  if (imgData) {
+    const resultImg = document.getElementById('resultImage');
+    resultImg.src = imgData; resultImg.style.display = 'block';
+    document.getElementById('resultImagePlaceholder').style.display = 'none';
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+      const bar = document.getElementById('confidenceBar');
+      if (bar) bar.style.width = '87%';
+    }, 600);
+
+    if (!Auth.check()) {
+      const gp = document.getElementById('guestSavePrompt');
+      if (gp) gp.style.display = 'flex';
+      const saveBtn = document.getElementById('saveBtn');
+      if (saveBtn) saveBtn.title = 'Create an account to save results';
+    }
+  });
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, character => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    })[character]);
+  }
+
+  async function loadApiShades() {
+    const status = document.getElementById('apiShadeStatus');
+    if (!Auth.check()) {
+      status.textContent = 'Guest preview: two color choices per item. Log in to unlock all five choices and real-color API swatches.';
+      return;
+    }
+
+    let result = null;
+    try { result = JSON.parse(sessionStorage.getItem('pm_result') || 'null'); } catch (e) {}
+    if (!result || !result.skinTone || !result.undertone) {
+      status.textContent = 'Run a skin analysis to load extra color swatches.';
+      return;
+    }
+
+    status.textContent = 'Loading extra color swatches...';
+    try {
+      const query = new URLSearchParams({
+        skinTone: result.skinTone,
+        undertone: result.undertone
+      });
+      const response = await fetch('/api/shades?' + query.toString());
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Shade colors are unavailable.');
+
+      // Keep exactly five suggested colors, using API swatches first and local colors to fill gaps.
+      let apiShadeCount = 0;
+      Object.keys(data.palette || {}).forEach(category => {
+        const apiChoices = data.shades[category] || [];
+        const localChoices = data.palette[category] || [];
+        const uniqueChoices = [];
+        const usedColors = new Set();
+
+        [...apiChoices, ...localChoices].forEach(shade => {
+          const hex = (shade.hex || '').toUpperCase();
+          if (!/^#[0-9A-F]{6}$/.test(hex) || usedColors.has(hex) || uniqueChoices.length >= 5) return;
+          usedColors.add(hex);
+          uniqueChoices.push(shade);
+        });
+        palette[category] = uniqueChoices;
+        apiShadeCount += Math.min(apiChoices.length, uniqueChoices.length);
+
+        (customShades[category] || []).forEach(shade => palette[category].push(shade));
+      });
+
+      lockedCounts = {};
+      resetState();
+      buildControls();
+      requestRender();
+      if (data.apiAvailable === false) {
+        status.textContent = 'The Makeup API is unavailable right now. Your built-in personalized colors are ready to try.';
+      } else {
+        status.textContent = apiShadeCount
+          ? `Your account has five choices per item. ${apiShadeCount} colors came from the Makeup API.`
+          : 'All five choices are unlocked. Your personalized colors are ready to try.';
+      }
+    } catch (e) {
+      status.textContent = 'Extra API swatches could not load. Your personalized shades are still ready to try.';
+    }
+  }
+
+  async function saveResult() {
+    // Guests cannot save anything
+    if (!Auth.check()) {
+      showToast('Log in or create an account to save your results.', 'warning');
+      setTimeout(() => { window.location.href = 'login.html'; }, 1200);
+      return;
+    }
+    let result = null;
+    try { result = JSON.parse(sessionStorage.getItem('pm_result') || 'null'); } catch (e) {}
+    if (!result) { showToast('No analysis to save yet. Try the analysis first.', 'warning'); return; }
+
+    const btn = document.getElementById('saveBtn');
+    try {
+      const res = await fetch('/api/analyses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          skinTone:   result.skinTone,
+          skinType:   result.skinType,
+          undertone:  result.undertone,
+          confidence: result.confidence,
+          palette:    result.palette,
+          image:      sessionStorage.getItem('pm_analysis_image')   // the photo is saved too
+        })
+      });
+      if (res.status === 401) {           // server says the login expired
+        Auth.logout();
+        return;
+      }
+      if (!res.ok) { showToast('Could not save. Please try again.', 'error'); return; }
+      showToast('Result and photo saved to your history!', 'success');
+      if (btn) { btn.innerHTML = '<i class="bi bi-bookmark-check-fill"></i> Saved'; btn.disabled = true; }
+    } catch (e) {
+      showToast('Cannot reach the server. Is app.py running?', 'error');
+    }
+  }
+
+  function downloadPalette() {
+    showToast('Palette download will be available when the backend is connected.', 'info');
+  }
+
+  /* ============================================================
+     TRY-ON STUDIO
+     Photo + makeup drawn on a <canvas>. Every shade click or
+     slider move re-draws it, so the photo changes live.
+     ============================================================ */
+
+  // 1) Palette: real result from the backend if present, else demo data
+  let palette;
+  let lockedCounts = {};          // shades hidden from guests (the server decides)
+  try {
+    const saved = JSON.parse(sessionStorage.getItem('pm_result') || 'null');
+    palette = saved && saved.palette;
+    lockedCounts = (saved && saved.locked) || {};
+  } catch (e) {}
+  if (!palette) palette = PM_MOCK.sampleResult.palette;
+
+  // Complete older saved results so every makeup control has five options.
+  const EXTRA_SHADE_OPTIONS = {
+    foundation: [
+      { name: 'Honey Beige', hex: '#BF8D5C', note: 'A golden medium shade for a warm complexion.' },
+      { name: 'Warm Tan', hex: '#A9774F', note: 'A deeper golden shade for a warm complexion.' }
+    ],
+    blush: [
+      { name: 'Apricot Glow', hex: '#F28F62', note: 'A lively peach shade for a warm-toned look.' },
+      { name: 'Sunset Coral', hex: '#D96E4F', note: 'A deeper coral shade for extra warmth.' }
+    ],
+    lip: [
+      { name: 'Spiced Rose', hex: '#A94F42', note: 'A deeper rosy shade with a warm finish.' }
+    ],
+    concealer: [
+      { name: 'Light Concealer', hex: '#F0D9C7', note: 'A light shade for brightening.' },
+      { name: 'Neutral Concealer', hex: '#D8B590', note: 'A balanced shade for blending.' },
+      { name: 'Medium Concealer', hex: '#C39A78', note: 'A medium shade for spot coverage.' },
+      { name: 'Tan Concealer', hex: '#A77B5B', note: 'A deeper shade for medium complexions.' },
+      { name: 'Deep Concealer', hex: '#76543E', note: 'A rich shade for deeper complexions.' }
+    ],
+    color_corrector: [
+      { name: 'Peach Corrector', hex: '#F4A47E', note: 'Helps balance mild blue or purple discoloration.' },
+      { name: 'Orange Corrector', hex: '#E77B3C', note: 'A deeper option for balancing blue or purple tones.' },
+      { name: 'Green Corrector', hex: '#8DAA76', note: 'Helps balance visible redness.' },
+      { name: 'Lavender Corrector', hex: '#B49BC8', note: 'Helps balance a dull or yellow-looking cast.' },
+      { name: 'Yellow Corrector', hex: '#E8CA67', note: 'Helps balance mild purple discoloration.' }
+    ],
+    eyeshadow: [
+      { name: 'Olive Bronze', hex: '#746044', note: 'A muted bronze shade for a warmer eye look.' }
+    ]
+  };
+
+  const hasMakeupAccess = Auth.check();
+  const CUSTOM_SHADE_KEY = 'pm_custom_shades';
+  const customShades = {};
+  try {
+    const savedCustom = JSON.parse(sessionStorage.getItem(CUSTOM_SHADE_KEY) || '{}');
+    Object.keys(EXTRA_SHADE_OPTIONS).forEach(category => {
+      const savedList = Array.isArray(savedCustom[category]) ? savedCustom[category] : [];
+      customShades[category] = savedList.filter(shade =>
+        shade && /^#[0-9a-f]{6}$/i.test(shade.hex || '') && typeof shade.name === 'string'
+      );
+    });
+  } catch (e) {
+    Object.keys(EXTRA_SHADE_OPTIONS).forEach(category => { customShades[category] = []; });
+  }
+
+  Object.keys(EXTRA_SHADE_OPTIONS).forEach(category => {
+    if (!Array.isArray(palette[category])) palette[category] = [];
+    EXTRA_SHADE_OPTIONS[category].forEach(shade => {
+      const visibleLimit = hasMakeupAccess ? 5 : 2;
+      if (palette[category].length < visibleLimit) palette[category].push(shade);
+    });
+    if (!hasMakeupAccess) {
+      palette[category] = palette[category].slice(0, 2);
+      lockedCounts[category] = 3;
+    }
+    customShades[category].forEach(shade => palette[category].push(shade));
+  });
+
+  // 2) What the user can change in the try-on.
+  const CATS = [
+    { key: 'foundation', title: 'Foundation', icon: 'bi-droplet-fill', defShade: 1,
+      sliders: [{ prop: 'amount', label: 'Coverage',  def: 40 }] },
+    { key: 'concealer', title: 'Concealer', icon: 'bi-brightness-high-fill', defShade: 1,
+      sliders: [{ prop: 'amount', label: 'Coverage', def: 35 }] },
+    { key: 'color_corrector', title: 'Color Corrector', icon: 'bi-palette-fill', defShade: 0,
+      sliders: [{ prop: 'amount', label: 'Intensity', def: 25 }] },
+    { key: 'blush', title: 'Blush', icon: 'bi-heart-fill', defShade: 0,
+      sliders: [{ prop: 'amount', label: 'Intensity', def: 50 }, { prop: 'size', label: 'Size', def: 50 }] },
+    { key: 'lip', title: 'Lipstick', icon: 'bi-brush-fill', defShade: 0,
+      sliders: [{ prop: 'amount', label: 'Intensity', def: 60 }] },
+    { key: 'eyeshadow', title: 'Eyeshadow', icon: 'bi-eye-fill', defShade: 3,
+      sliders: [{ prop: 'amount', label: 'Intensity', def: 50 }] }
+  ];
+
+  // Face shape is user-selected because a photo-based guess can be unreliable.
+  const FACE_SHAPE_TIPS = {
+    Oval: [
+      'Try blush on the apples of your cheeks and blend outward.',
+      'Most lipstick shapes and finishes can work; follow your preferred style.',
+      'Blend foundation evenly from the center of your face outward.',
+      'Use concealer in thin layers where you want extra coverage.',
+      'Blend color corrector only over areas with visible discoloration.'
+    ],
+    Round: [
+      'Blend blush slightly upward toward your temples for a lifted look.',
+      'A softly defined lip can add balance; choose any shade you enjoy.',
+      'Blend foundation evenly instead of drawing a strong contour line.',
+      'Place a small amount of concealer under the eyes and blend upward.',
+      'Use corrector only on discolored areas, then cover lightly with concealer.'
+    ],
+    Square: [
+      'Blend blush in soft circles on the cheeks for a gentle finish.',
+      'A softly rounded lip edge can balance a more angular look.',
+      'Use light layers of foundation and blend along the jawline.',
+      'Tap concealer rather than rubbing it around the under-eye area.',
+      'Apply a thin layer of corrector only where needed.'
+    ],
+    Heart: [
+      'Place blush on the apples of your cheeks and blend outward.',
+      'Try a lip color or finish that draws attention to the lips if you like.',
+      'Blend foundation carefully across the forehead and jaw for an even finish.',
+      'Use concealer sparingly and blend it into the surrounding skin.',
+      'Choose a corrector based on the color you want to balance, not face shape.'
+    ],
+    Oblong: [
+      'Blend blush across the cheeks rather than extending it far upward.',
+      'Any lipstick shade can work; choose a finish that feels comfortable.',
+      'Apply foundation in thin layers and check it in natural light.',
+      'Use a small amount of concealer and blend the edges well.',
+      'Apply corrector only on visible discoloration and blend the edges.'
+    ]
+  };
+
+  // manual face alignment (only used when automatic face detection is unavailable)
+  const ALIGN_DEFAULT = { x: 50, y: 50, size: 50 };
+  let align = { ...ALIGN_DEFAULT };
+  let autoDetected = false;
+  let lipOffset = { x: 0, y: 0 };
+
+  let state = {};
+  function resetState() {
+    CATS.forEach(c => {
+      const list = palette[c.key] || [];
+      state[c.key] = { on: true, shade: Math.min(c.defShade, Math.max(list.length - 1, 0)) };
+      c.sliders.forEach(s => state[c.key][s.prop] = s.def);
+    });
+    state.eyeshadow.angle = 25;
+    state.eyeshadow.height = 100;
+    state.eyeshadow.width = 100;
+    state.eyeshadow.line = 35;
+  }
+  resetState();
+
+  // Show five face-shape options and beginner-friendly makeup placement tips.
+  function addFaceShapeGuide(host) {
+    const savedShape = sessionStorage.getItem('pm_face_shape') || '';
+    const box = document.createElement('section');
+    box.className = 'palette-section studio-card mb-3';
+    box.innerHTML = `
+      <h3 style="font-size:1rem;font-weight:700;margin:0 0 0.5rem;color:var(--text-primary);">Face shape guide</h3>
+      <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.5rem;">Choose the shape that seems closest to yours. This is a guide, not a diagnosis.</p>
+      <label for="faceShapeSelect" style="font-size:0.8rem;font-weight:600;">Your face shape</label>
+      <select id="faceShapeSelect" class="form-select form-select-sm" style="max-width:320px;margin-top:0.25rem;">
+        <option value="">Choose a face shape</option>
+        ${Object.keys(FACE_SHAPE_TIPS).map(shape => `<option value="${shape}">${shape}</option>`).join('')}
+      </select>
+      <ul id="faceShapeTips" style="font-size:0.78rem;color:var(--text-secondary);padding-left:1.2rem;margin:0.75rem 0 0;"></ul>
+    `;
+    host.appendChild(box);
+
+    const select = box.querySelector('#faceShapeSelect');
+    select.value = savedShape;
+    const updateTips = () => {
+      const tips = FACE_SHAPE_TIPS[select.value] || [];
+      const list = box.querySelector('#faceShapeTips');
+      list.replaceChildren();
+      tips.forEach(tip => {
+        const item = document.createElement('li');
+        item.textContent = tip;
+        list.appendChild(item);
+      });
+      if (select.value) sessionStorage.setItem('pm_face_shape', select.value);
+      else sessionStorage.removeItem('pm_face_shape');
+    };
+    select.addEventListener('change', updateTips);
+    updateTips();
+  }
+
+  // 3) Build the controls (swipe row + sliders)
+  function buildControls() {
+    const host = document.getElementById('studioControls');
+    host.innerHTML = '';
+    addFaceShapeGuide(host);
+
+    if (photo && !autoDetected) {
+      const box = document.createElement('div');
+      box.className = 'palette-section mb-3';
+      box.innerHTML = `
+        <div style="font-size:0.9rem;font-weight:700;color:var(--text-primary);margin-bottom:0.2rem;">Align makeup to your face</div>
+        <p style="font-size:0.78rem;color:var(--text-muted);margin:0 0 0.5rem;">Automatic face detection isn't available, so drag these until the makeup sits on your face.</p>
+        ${[['x', 'Left / Right'], ['y', 'Up / Down'], ['size', 'Size']].map(([p, l]) => `
+          <div class="range-row">
+            <label for="al-${p}">${l}</label>
+            <input type="range" class="pm-range" id="al-${p}" min="0" max="100" value="${align[p]}" data-align="${p}">
+            <output></output>
+          </div>`).join('')}`;
+      host.appendChild(box);
+      box.querySelectorAll('[data-align]').forEach(r => {
+        setFill(r);
+        r.addEventListener('input', () => {
+          align[r.dataset.align] = parseInt(r.value, 10);
+          setFill(r);
+          shapes = shapesApprox();
+          requestRender();
+        });
+      });
+    }
+
+    CATS.forEach(cat => {
+      const list = palette[cat.key] || [];
+      const st = state[cat.key];
+      const card = document.createElement('div');
+      card.className = 'palette-section studio-card mb-3' + (st.on ? '' : ' off');
+      card.dataset.cat = cat.key;
+
+      card.innerHTML = `
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <div class="palette-category-header" style="margin:0;">
+            <div class="palette-category-icon"><i class="bi ${cat.icon}"></i></div>
+            <div>
+              <h3 style="font-size:1rem;font-weight:700;margin:0;color:var(--text-primary);">${cat.title}</h3>
+              <p style="font-size:0.78rem;color:var(--text-muted);margin:0;">${cat.key === 'foundation' ? 'Covers the full detected face, keeping eyes and lips clear.' : 'Swipe to browse shades'}</p>
+            </div>
+          </div>
+          <label class="pm-toggle" title="Show / hide ${cat.title}">
+            <input type="checkbox" data-toggle="${cat.key}" ${st.on ? 'checked' : ''}>
+            <span class="pm-toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="shade-row">
+          ${list.map((c, i) => `
+            <div class="shade-chip ${i === st.shade ? 'selected' : ''}" data-cat="${cat.key}" data-i="${i}" title="${escapeHtml(c.note)}">
+              <div class="dot" style="background:${escapeHtml(c.hex)};"></div>
+              <div class="nm">${escapeHtml(c.name)}</div>
+              <div class="hx">${escapeHtml(c.hex)}</div>
+            </div>`).join('')}
+          ${Array.from({ length: lockedCounts[cat.key] || 0 }).map(() => `
+            <div class="shade-chip" data-locked="1" title="Log in to unlock more shades" style="opacity:.6;">
+              <div class="dot" style="background:#E5DDD6;display:flex;align-items:center;justify-content:center;"><i class="bi bi-lock-fill" style="font-size:.75rem;color:#8A7A70;"></i></div>
+              <div class="nm">Locked</div>
+              <div class="hx">Log in</div>
+            </div>`).join('')}
+        </div>
+
+        <p class="shade-readout" id="readout-${cat.key}"></p>
+
+        ${cat.sliders.map(s => `
+          <div class="range-row">
+            <label for="rng-${cat.key}-${s.prop}">${s.label}</label>
+            <input type="range" class="pm-range" id="rng-${cat.key}-${s.prop}"
+                   min="0" max="100" value="${st[s.prop]}" data-cat="${cat.key}" data-prop="${s.prop}">
+            <output id="out-${cat.key}-${s.prop}">${st[s.prop]}%</output>
+          </div>`).join('')}
+        ${cat.key === 'eyeshadow' ? `
+          <div class="range-row">
+            <label for="eyeshadowAngle">Angle</label>
+            <input type="range" class="pm-range" id="eyeshadowAngle" min="-45" max="45" value="${st.angle}" data-eyeshadow-shape="angle">
+            <output id="out-eyeshadow-angle">${st.angle}°</output>
+          </div>
+          <div class="range-row">
+            <label for="eyeshadowHeight">Height</label>
+            <input type="range" class="pm-range" id="eyeshadowHeight" min="50" max="160" value="${st.height}" data-eyeshadow-shape="height">
+            <output id="out-eyeshadow-height">${st.height}%</output>
+          </div>
+          <div class="range-row">
+            <label for="eyeshadowWidth">Sides</label>
+            <input type="range" class="pm-range" id="eyeshadowWidth" min="50" max="160" value="${st.width}" data-eyeshadow-shape="width">
+            <output id="out-eyeshadow-width">${st.width}%</output>
+          </div>
+          <div class="range-row">
+            <label for="eyeshadowLine">Wing line</label>
+            <input type="range" class="pm-range" id="eyeshadowLine" min="0" max="100" value="${st.line}" data-eyeshadow-shape="line">
+            <output id="out-eyeshadow-line">${st.line}%</output>
+          </div>` : ''}
+        <div style="border-top:1px solid var(--border-light);margin-top:0.8rem;padding-top:0.7rem;">
+          <label for="custom-name-${cat.key}" style="font-size:0.75rem;font-weight:600;">Create your own color</label>
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.35rem;flex-wrap:wrap;">
+            <input type="color" value="${list[st.shade] ? list[st.shade].hex : '#C08080'}"
+                   data-custom-color="${cat.key}" aria-label="Choose a custom ${cat.title.toLowerCase()} color"
+                   style="width:46px;height:38px;padding:2px;border:1px solid var(--border-light);border-radius:8px;">
+            <input type="text" id="custom-name-${cat.key}" data-custom-name="${cat.key}"
+                   maxlength="32" placeholder="Color name (optional)" aria-label="Custom color name"
+                   style="flex:1;min-width:130px;height:38px;padding:0.4rem 0.6rem;border:1px solid var(--border-light);border-radius:8px;">
+            <button type="button" class="btn-pm-secondary" data-add-custom="${cat.key}"
+                    style="padding:0.45rem 0.75rem;font-size:0.78rem;">Use color</button>
+          </div>
+        </div>
+      `;
+      host.appendChild(card);
+      updateReadout(cat.key);
+      card.querySelectorAll('.pm-range').forEach(r => setFill(r));
+    });
+    // shade click
+    host.querySelectorAll('.shade-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        if (chip.dataset.locked) {
+          showToast('Log in to unlock all makeup shades.', 'warning');
+          setTimeout(() => { window.location.href = 'login.html'; }, 1200);
+          return;
+        }
+        const key = chip.dataset.cat;
+        state[key].shade = parseInt(chip.dataset.i, 10);
+        state[key].on = true;
+        chip.parentElement.querySelectorAll('.shade-chip').forEach(c => c.classList.remove('selected'));
+        chip.classList.add('selected');
+        syncToggle(key);
+        updateReadout(key);
+        requestRender();
+      });
+    });
+
+    // Add a user's own swatch to the same shade selector and live preview.
+    host.querySelectorAll('[data-add-custom]').forEach(button => {
+      button.addEventListener('click', () => {
+        const category = button.dataset.addCustom;
+        const colorInput = host.querySelector(`[data-custom-color="${category}"]`);
+        const nameInput = host.querySelector(`[data-custom-name="${category}"]`);
+        const shade = {
+          name: nameInput.value.trim() || 'My Custom Shade',
+          hex: colorInput.value.toUpperCase(),
+          note: 'A custom color chosen by you.'
+        };
+        if (!/^#[0-9A-F]{6}$/.test(shade.hex)) {
+          showToast('Please choose a valid color.', 'error');
+          return;
+        }
+
+        customShades[category].push(shade);
+        palette[category].push(shade);
+        try {
+          sessionStorage.setItem(CUSTOM_SHADE_KEY, JSON.stringify(customShades));
+        } catch (e) {
+          showToast('Color added for this page, but could not be saved in this browser session.', 'warning');
+        }
+        state[category].shade = palette[category].length - 1;
+        state[category].on = true;
+        buildControls();
+        requestRender();
+        showToast('Your custom color is ready to preview.', 'success');
+      });
+    });
+
+    // slider drag
+    host.querySelectorAll('.pm-range[data-cat]').forEach(r => {
+      r.addEventListener('input', () => {
+        const key = r.dataset.cat, prop = r.dataset.prop;
+        state[key][prop] = parseInt(r.value, 10);
+        state[key].on = true;
+        document.getElementById(`out-${key}-${prop}`).textContent = r.value + '%';
+        setFill(r);
+        syncToggle(key);
+        requestRender();
+      });
+    });
+
+    host.querySelectorAll('[data-eyeshadow-shape]').forEach(input => {
+      input.addEventListener('input', () => {
+        const prop = input.dataset.eyeshadowShape;
+        state.eyeshadow[prop] = Number(input.value);
+        const suffix = prop === 'angle' ? '°' : '%';
+        document.getElementById(`out-eyeshadow-${prop}`).textContent = input.value + suffix;
+        setFill(input);
+        state.eyeshadow.on = true;
+        syncToggle('eyeshadow');
+        requestRender();
+      });
+    });
+
+    // on/off switch
+    host.querySelectorAll('[data-toggle]').forEach(t => {
+      t.addEventListener('change', () => {
+        state[t.dataset.toggle].on = t.checked;
+        t.closest('.studio-card').classList.toggle('off', !t.checked);
+        requestRender();
+      });
+    });
+  }
+
+  function setFill(r) {
+    const min = Number(r.min) || 0;
+    const max = Number(r.max) || 100;
+    const value = Number(r.value);
+    const pct = max > min ? Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100)) : 0;
+    r.style.setProperty('--pct', pct + '%');
+  }
+
+  function syncToggle(key) {
+    const card = document.querySelector(`.studio-card[data-cat="${key}"]`);
+    card.classList.remove('off');
+    card.querySelector('[data-toggle]').checked = true;
+  }
+
+  function updateReadout(key) {
+    const c = palette[key][state[key].shade];
+    document.getElementById('readout-' + key).innerHTML =
+      `<b>${escapeHtml(c.name)}</b> · ${escapeHtml(c.hex)} — ${escapeHtml(c.note)}`;
+  }
+
+  /* ------------------------------------------------------------
+     Face shapes. Tries MediaPipe (real face landmarks). If that
+     fails (offline / no face), uses an approximate placement.
+     ------------------------------------------------------------ */
+  const LM = {
+    faceOval:  [10,338,297,332,284,251,389,356,454,323,361,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,21,54,103,67,109],
+    lipsOuter: [61,146,91,181,84,17,314,405,321,375,291,409,270,269,267,0,37,39,40,185],
+    lipsInner: [78,95,88,178,87,14,317,402,318,324,308,415,310,311,312,13,82,81,80,191],
+    eyeR:      [33,246,161,160,159,158,157,173,133,155,154,153,145,144,163,7],
+    eyeL:      [362,398,384,385,386,387,388,466,263,249,390,373,374,380,381,382],
+    lidR:      [33,246,161,160,159,158,157,173,133],
+    lidL:      [263,466,388,387,386,385,384,398,362]
+  };
+
+  let photo = null, W = 0, H = 0, shapes = null;
+  const canvas = document.getElementById('studioCanvas');
+  const ctx = canvas.getContext('2d');
+  const layer = document.createElement('canvas');
+  const lctx = layer.getContext('2d');
+  const softLayer = document.createElement('canvas');
+  const softCtx = softLayer.getContext('2d');
+  const canBlur = 'filter' in ctx;
+
+  function ellipsePoly(cx, cy, rx, ry, n = 36) {
+    const pts = [];
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      pts.push({ x: cx + Math.cos(a) * rx, y: cy + Math.sin(a) * ry });
+    }
+    return pts;
+  }
+
+  // crescent above the eyelid
+  function lidPoly(upper) {
+    const eyeW = Math.hypot(upper[0].x - upper[upper.length - 1].x, upper[0].y - upper[upper.length - 1].y);
+    const lift = eyeW * 0.6;
+    const n = upper.length;
+    const top = upper.map((p, i) => {
+      const t = i / (n - 1);
+      return { x: p.x, y: p.y - lift * (0.3 + 0.7 * Math.sin(Math.PI * t)) };
+    });
+    return upper.concat(top.reverse());
+  }
+
+  function shapesFromLandmarks(lm) {
+    const P = i => ({ x: lm[i].x * W, y: lm[i].y * H });
+    const poly = arr => arr.map(P);
+    const lerp = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+    const faceW = Math.hypot(P(454).x - P(234).x, P(454).y - P(234).y);
+    return {
+      faceW,
+      face: poly(LM.faceOval),
+      cuts: [poly(LM.eyeR), poly(LM.eyeL), poly(LM.lipsOuter)],
+      lipsOuter: poly(LM.lipsOuter),
+      lipsInner: poly(LM.lipsInner),
+      shadows: [lidPoly(poly(LM.lidR)), lidPoly(poly(LM.lidL))],
+      eyeCenters: [
+        { x: (P(33).x + P(133).x) / 2, y: (P(33).y + P(133).y) / 2 },
+        { x: (P(362).x + P(263).x) / 2, y: (P(362).y + P(263).y) / 2 }
+      ],
+      cheeks: [lerp(P(205), P(234), 0.2), lerp(P(425), P(454), 0.2)],
+      underEyes: [
+        { x: (P(33).x + P(133).x) / 2, y: (P(33).y + P(133).y) / 2 + faceW * 0.06 },
+        { x: (P(362).x + P(263).x) / 2, y: (P(362).y + P(263).y) / 2 + faceW * 0.06 }
+      ]
+    };
+  }
+
+  function shapesApprox() {
+    const fw = Math.min(W * 0.55, H * 0.5) * (0.5 + align.size / 100), fh = fw * 1.35;
+    const cx = W / 2 + ((align.x - 50) / 100) * W;
+    const cy = H * 0.48 + ((align.y - 50) / 100) * H;
+    const eyeY = cy - fh * 0.1;
+    const eyeR = { x: cx - fw * 0.2, y: eyeY }, eyeL = { x: cx + fw * 0.2, y: eyeY };
+    const lidFor = (e, dir) => {
+      const up = [];
+      for (let i = 0; i <= 8; i++) {
+        const t = i / 8;
+        up.push({ x: e.x + dir * fw * 0.09 * (1 - 2 * t), y: e.y - Math.sin(Math.PI * t) * fw * 0.03 });
+      }
+      return up;
+    };
+    const lipC = { x: cx, y: cy + fh * 0.27 };
+    return {
+      faceW: fw,
+      face: ellipsePoly(cx, cy, fw / 2, fh / 2),
+      cuts: [ellipsePoly(eyeR.x, eyeR.y, fw * 0.09, fw * 0.035), ellipsePoly(eyeL.x, eyeL.y, fw * 0.09, fw * 0.035),
+             ellipsePoly(lipC.x, lipC.y, fw * 0.13, fw * 0.045)],
+      lipsOuter: ellipsePoly(lipC.x, lipC.y, fw * 0.13, fw * 0.045),
+      lipsInner: ellipsePoly(lipC.x, lipC.y, fw * 0.1, fw * 0.008),
+      shadows: [lidPoly(lidFor(eyeR, 1)), lidPoly(lidFor(eyeL, -1).reverse())],
+      eyeCenters: [eyeR, eyeL],
+      cheeks: [{ x: cx - fw * 0.27, y: cy + fh * 0.08 }, { x: cx + fw * 0.27, y: cy + fh * 0.08 }],
+      underEyes: [{ x: eyeR.x, y: eyeR.y + fw * 0.07 }, { x: eyeL.x, y: eyeL.y + fw * 0.07 }]
+    };
+  }
+
+  function lipBounds() {
+    const xs = shapes.lipsOuter.map(point => point.x);
+    const ys = shapes.lipsOuter.map(point => point.y);
+    return {
+      minX: Math.min(...xs), maxX: Math.max(...xs),
+      minY: Math.min(...ys), maxY: Math.max(...ys)
+    };
+  }
+
+  function clampLipOffset() {
+    const bounds = lipBounds();
+    lipOffset.x = Math.max(-bounds.minX, Math.min(W - bounds.maxX, lipOffset.x));
+    lipOffset.y = Math.max(-bounds.minY, Math.min(H - bounds.maxY, lipOffset.y));
+  }
+
+  function lipPoints(points) {
+    return points.map(point => ({ x: point.x + lipOffset.x, y: point.y + lipOffset.y }));
+  }
+
+  async function detectLandmarks(img) {
+    const V = '0.10.14';
+    const mp = await import(`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${V}/vision_bundle.mjs`);
+    const files = await mp.FilesetResolver.forVisionTasks(`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${V}/wasm`);
+    const landmarker = await mp.FaceLandmarker.createFromOptions(files, {
+      baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task' },
+      runningMode: 'IMAGE',
+      numFaces: 1
+    });
+    const res = landmarker.detect(img);
+    return (res.faceLandmarks && res.faceLandmarks[0]) || null;
+  }
+
+  /* ------------------------------------------------------------
+     Drawing
+     ------------------------------------------------------------ */
+  function pathPoly(c, pts) {
+    c.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) c.lineTo(pts[i].x, pts[i].y);
+    c.closePath();
+  }
+
+  function shapeShadow(points, center, angle, height, width, faceW) {
+    const outer = center.x < W / 2 ? -1 : 1;
+    const radians = angle * Math.PI / 180;
+    const cos = Math.cos(radians), sin = Math.sin(radians);
+    const scaled = points.map(point => {
+      const outward = (point.x - center.x) * outer;
+      const upward = center.y - point.y;
+      const rotatedOutward = outward * cos - upward * sin;
+      const rotatedUpward = outward * sin + upward * cos;
+      return {
+        x: center.x + outer * rotatedOutward * width / 100,
+        y: center.y - rotatedUpward * height / 100
+      };
+    });
+    const tipIndex = scaled.reduce((best, point, i, all) =>
+      (point.x - center.x) * outer > (all[best].x - center.x) * outer ? i : best, 0);
+    return { points: scaled, tip: scaled[tipIndex], outer };
+  }
+
+  function drawShadowWing(c, shape, length, faceW, angle) {
+    if (length <= 0) return;
+    const radians = angle * Math.PI / 180;
+    const direction = { x: shape.outer * Math.cos(radians), y: -Math.sin(radians) };
+    const normal = { x: Math.sin(radians), y: shape.outer * Math.cos(radians) };
+    const halfWidth = faceW * 0.012;
+    const wingLength = faceW * 0.1 * length / 100;
+    const base = shape.tip;
+    c.beginPath();
+    c.moveTo(base.x + normal.x * halfWidth, base.y + normal.y * halfWidth);
+    c.lineTo(base.x + direction.x * wingLength, base.y + direction.y * wingLength);
+    c.lineTo(base.x - normal.x * halfWidth, base.y - normal.y * halfWidth);
+    c.closePath();
+    c.fill();
+  }
+
+  // draw something on the temp layer, then blend it onto the photo
+  function paint(drawFn, cutFn, passes, blurPx) {
+    lctx.clearRect(0, 0, W, H);
+    lctx.globalCompositeOperation = 'source-over';
+    drawFn(lctx);
+    if (cutFn) {
+      lctx.globalCompositeOperation = 'destination-out';
+      cutFn(lctx);
+      lctx.globalCompositeOperation = 'source-over';
+    }
+    let paintLayer = layer;
+    if (canBlur && blurPx > 0) {
+      softCtx.clearRect(0, 0, W, H);
+      softCtx.save();
+      softCtx.filter = `blur(${blurPx}px)`;
+      softCtx.drawImage(layer, 0, 0);
+      softCtx.restore();
+      // Keep the softened color inside its original makeup mask.
+      softCtx.globalCompositeOperation = 'destination-in';
+      softCtx.drawImage(layer, 0, 0);
+      softCtx.globalCompositeOperation = 'source-over';
+      paintLayer = softLayer;
+    }
+    passes.forEach(p => {
+      if (p.alpha <= 0.001) return;
+      ctx.save();
+      ctx.globalAlpha = Math.min(p.alpha, 1);
+      ctx.globalCompositeOperation = p.blend;
+      ctx.drawImage(paintLayer, 0, 0);
+      ctx.restore();
+    });
+  }
+
+  function pickColor(key) { return palette[key][state[key].shade].hex; }
+
+  function render(showOriginal) {
+    if (!photo) return;
+    ctx.clearRect(0, 0, W, H);
+    ctx.drawImage(photo, 0, 0, W, H);
+    if (showOriginal || !shapes) return;
+
+    const fw = shapes.faceW;
+
+    // Foundation: tints the whole face (not eyes, brows or lips)
+    let s = state.foundation;
+    if (s.on && s.amount > 0) {
+      const a = s.amount / 100, col = pickColor('foundation');
+      paint(c => { c.fillStyle = col; c.beginPath(); pathPoly(c, shapes.face); c.fill(); },
+            c => { shapes.cuts.forEach(p => { c.beginPath(); pathPoly(c, p); c.fill(); }); },
+            [{ blend: 'color', alpha: a * 0.7 }, { blend: 'soft-light', alpha: a * 0.6 }],
+            fw * 0.012);
+    }
+
+    // Concealer: add a soft preview below both eyes.
+    s = state.concealer;
+    if (s && s.on && s.amount > 0) {
+      const a = s.amount / 100, col = pickColor('concealer');
+      const r = fw * 0.085;
+      paint(c => {
+        shapes.underEyes.forEach(p => {
+          const g = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+          g.addColorStop(0, col);
+          g.addColorStop(1, 'rgba(0,0,0,0)');
+          c.fillStyle = g;
+          c.beginPath();
+          c.arc(p.x, p.y, r, 0, Math.PI * 2);
+          c.fill();
+        });
+      }, null, [{ blend: 'soft-light', alpha: a * 0.7 }], fw * 0.02);
+    }
+
+    // Color corrector: a light tint preview below the eyes.
+    s = state.color_corrector;
+    if (s && s.on && s.amount > 0) {
+      const a = s.amount / 100, col = pickColor('color_corrector');
+      const r = fw * 0.065;
+      paint(c => {
+        shapes.underEyes.forEach(p => {
+          const g = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+          g.addColorStop(0, col);
+          g.addColorStop(1, 'rgba(0,0,0,0)');
+          c.fillStyle = g;
+          c.beginPath();
+          c.arc(p.x, p.y, r, 0, Math.PI * 2);
+          c.fill();
+        });
+      }, null, [{ blend: 'color', alpha: a * 0.45 }], fw * 0.015);
+    }
+
+    // Blush: soft round glow on both cheeks
+    s = state.blush;
+    if (s.on && s.amount > 0) {
+      const a = s.amount / 100, col = pickColor('blush');
+      const r = fw * 0.15 * (0.6 + (s.size / 100) * 0.9);
+      paint(c => {
+        shapes.cheeks.forEach(p => {
+          c.save();
+          c.translate(p.x, p.y);
+          c.scale(1.25, 0.8);
+          const g = c.createRadialGradient(0, 0, 0, 0, 0, r);
+          g.addColorStop(0, col);
+          g.addColorStop(0.35, col);
+          g.addColorStop(0.72, `${col}55`);
+          g.addColorStop(1, 'rgba(0,0,0,0)');
+          c.fillStyle = g;
+          c.beginPath();
+          c.arc(0, 0, r, 0, Math.PI * 2);
+          c.fill();
+          c.restore();
+        });
+      }, null, [{ blend: 'soft-light', alpha: a * 0.8 }, { blend: 'color', alpha: a * 0.4 }], fw * 0.01);
+    }
+
+    // Lips
+    s = state.lip;
+    if (s.on && s.amount > 0) {
+      const a = s.amount / 100, col = pickColor('lip');
+      paint(c => { c.fillStyle = col; c.beginPath(); pathPoly(c, lipPoints(shapes.lipsOuter)); c.fill(); },
+            c => { c.beginPath(); pathPoly(c, lipPoints(shapes.lipsInner)); c.fill(); },
+            [{ blend: 'color', alpha: a * 0.9 }, { blend: 'multiply', alpha: a * 0.4 }],
+            fw * 0.003);
+    }
+
+    // Eyeshadow
+    s = state.eyeshadow;
+    if (s.on && s.amount > 0) {
+      const a = s.amount / 100, col = pickColor('eyeshadow');
+      paint(c => {
+        c.fillStyle = col;
+        shapes.shadows.forEach((p, i) => {
+          const shadow = shapeShadow(p, shapes.eyeCenters[i], s.angle, s.height, s.width, fw);
+          c.beginPath();
+          pathPoly(c, shadow.points);
+          c.fill();
+          drawShadowWing(c, shadow, s.line, fw, s.angle);
+        });
+      },
+            null, [{ blend: 'multiply', alpha: a * 0.65 }, { blend: 'color', alpha: a * 0.5 }],
+            fw * 0.012);
+    }
+  }
+
+  let rafId = 0, comparing = false;
+  function requestRender() {
+    if (rafId) return;
+    rafId = requestAnimationFrame(() => { rafId = 0; render(comparing); });
+  }
+
+  let lipDrag = null;
+  function canvasPoint(event) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: (event.clientX - rect.left) * W / rect.width,
+      y: (event.clientY - rect.top) * H / rect.height
+    };
+  }
+
+  function isOnLip(point) {
+    if (!shapes || !state.lip.on || state.lip.amount <= 0) return false;
+    ctx.beginPath();
+    pathPoly(ctx, lipPoints(shapes.lipsOuter));
+    return ctx.isPointInPath(point.x, point.y);
+  }
+
+  canvas.addEventListener('pointerdown', event => {
+    if (!shapes || !state.lip.on || state.lip.amount <= 0) return;
+    const point = canvasPoint(event);
+    event.preventDefault();
+    if (!isOnLip(point)) {
+      const bounds = lipBounds();
+      lipOffset.x = point.x - (bounds.minX + bounds.maxX) / 2;
+      lipOffset.y = point.y - (bounds.minY + bounds.maxY) / 2;
+      clampLipOffset();
+      requestRender();
+    }
+    lipDrag = { pointerId: event.pointerId, point };
+    canvas.setPointerCapture(event.pointerId);
+    canvas.style.cursor = 'grabbing';
+  });
+
+  canvas.addEventListener('pointermove', event => {
+    const point = canvasPoint(event);
+    if (lipDrag && lipDrag.pointerId === event.pointerId) {
+      lipOffset.x += point.x - lipDrag.point.x;
+      lipOffset.y += point.y - lipDrag.point.y;
+      clampLipOffset();
+      lipDrag.point = point;
+      requestRender();
+      return;
+    }
+    canvas.style.cursor = shapes && state.lip.on && state.lip.amount > 0 ? 'grab' : 'default';
+  });
+
+  function stopLipDrag(event) {
+    if (!lipDrag || lipDrag.pointerId !== event.pointerId) return;
+    lipDrag = null;
+    if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    canvas.style.cursor = 'default';
+  }
+  canvas.addEventListener('pointerup', stopLipDrag);
+  canvas.addEventListener('pointercancel', stopLipDrag);
+
+  document.getElementById('resetLipPosition').addEventListener('click', () => {
+    lipOffset = { x: 0, y: 0 };
+    requestRender();
+  });
+
+  /* ------------------------------------------------------------
+     Start-up
+     ------------------------------------------------------------ */
+  function setStatus(text, cls) {
+    const el = document.getElementById('studioStatus');
+    el.textContent = text; el.className = 'studio-status ' + (cls || '');
+  }
+
+  async function initStudio() {
+    buildControls();
+    loadApiShades();
+    const src = sessionStorage.getItem('pm_analysis_image');
+    if (!src) { setStatus('No photo found. Go to Try It to add one.', 'warn'); return; }
+
+    const img = new Image();
+    img.onload = async () => {
+      photo = img;
+      const scale = Math.min(1, 1000 / Math.max(img.naturalWidth, img.naturalHeight));
+      W = Math.round(img.naturalWidth * scale);
+      H = Math.round(img.naturalHeight * scale);
+      canvas.width = W; canvas.height = H;
+      layer.width = W; layer.height = H;
+      softLayer.width = W; softLayer.height = H;
+      canvas.style.display = 'block';
+      document.getElementById('studioEmpty').style.display = 'none';
+      document.getElementById('lipDragHint').style.display = 'block';
+
+      shapes = null;
+      render(false);
+      setStatus('Finding your face…');
+
+      try {
+        const lm = await Promise.race([
+          detectLandmarks(img),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 20000))
+        ]);
+        if (lm) { autoDetected = true; shapes = shapesFromLandmarks(lm); setStatus('Face detected. Try the shades below!', 'ok'); }
+        else    { shapes = shapesApprox(); setStatus('No face found. Use the alignment sliders, or retake a clear front-facing photo.', 'warn'); }
+      } catch (e) {
+        shapes = shapesApprox();
+        setStatus('Face detection unavailable (needs internet). Use the alignment sliders.', 'warn');
+      }
+      buildControls();
+      render(false);
+    };
+    img.onerror = () => setStatus('Could not load your photo. Please try again.', 'warn');
+    img.src = src;
+  }
+
+  // Hold to compare
+  const cmp = document.getElementById('compareBtn');
+  const startCmp = e => { e.preventDefault(); comparing = true; render(true); };
+  const endCmp   = () => { if (comparing) { comparing = false; render(false); } };
+  cmp.addEventListener('pointerdown', startCmp);
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => cmp.addEventListener(ev, endCmp));
+
+  // Reset
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    resetState(); align = { ...ALIGN_DEFAULT }; lipOffset = { x: 0, y: 0 }; if (photo && !autoDetected) shapes = shapesApprox(); buildControls(); render(false);
+    showToast('Makeup reset to recommended shades.', 'info', 1800);
+  });
+
+  // Save image
+  document.getElementById('downloadImgBtn').addEventListener('click', () => {
+    if (!Auth.check()) {
+      showToast('Log in to save your try-on image.', 'warning');
+      setTimeout(() => { window.location.href = 'login.html'; }, 1200);
+      return;
+    }
+    if (!photo) { showToast('No photo to save yet.', 'warning'); return; }
+    canvas.toBlob(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'perfect-match-tryon.png';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    }, 'image/png');
+  });
+
+  initStudio();
+</script>
+</body>
+</html>

@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analyzing Your Skin — Perfect Match</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+  <link href="assets/css/main.css" rel="stylesheet" />
+  <style>
+    .analyzing-page {
+      min-height: 100vh;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .image-preview-circle {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 4px solid var(--pm-white);
+      box-shadow: var(--shadow-lg);
+      background: var(--bg-soft);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .image-preview-circle img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .image-preview-ring {
+      position: absolute;
+      inset: -8px;
+      border-radius: 50%;
+      border: 3px solid transparent;
+      border-top-color: var(--pm-gold);
+      border-right-color: var(--pm-rose);
+      animation: pmSpin 1.5s linear infinite;
+      pointer-events: none;
+    }
+
+    .analysis-card {
+      background: var(--pm-white);
+      border-radius: var(--radius-xl);
+      border: 1px solid var(--border-light);
+      box-shadow: var(--shadow-md);
+      padding: 2.25rem;
+      max-width: 520px;
+      width: 100%;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      padding: 0.8rem 1rem;
+      border-radius: var(--radius-md);
+      transition: var(--transition);
+      background: transparent;
+    }
+
+    .status-item.active-step { background: rgba(184,147,90,0.06); }
+
+    .status-icon-wrap {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.875rem;
+      flex-shrink: 0;
+      transition: var(--transition);
+    }
+
+    .status-icon-wrap.pending  { background: var(--bg-soft); color: var(--text-light); }
+    .status-icon-wrap.loading  { background: rgba(184,147,90,0.15); color: var(--pm-gold); }
+    .status-icon-wrap.done     { background: rgba(76,175,80,0.12); color: #4CAF50; }
+    .status-icon-wrap.error    { background: rgba(224,114,114,0.12); color: #E07272; }
+
+    .status-text-wrap { flex: 1; }
+    .status-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      transition: var(--transition);
+    }
+    .status-title.active { color: var(--text-primary); }
+    .status-title.done   { color: var(--text-primary); }
+
+    .status-sub {
+      font-size: 0.75rem;
+      color: var(--text-light);
+      margin-top: 1px;
+      min-height: 16px;
+      transition: var(--transition);
+    }
+
+    .status-percent {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--pm-gold);
+      min-width: 36px;
+      text-align: right;
+    }
+
+    /* Scan line animation on image */
+    .scan-overlay {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .scan-line {
+      position: absolute;
+      left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, rgba(184,147,90,0.7), transparent);
+      animation: scanMove 2s ease-in-out infinite;
+      top: 0;
+    }
+
+    @keyframes scanMove {
+      0%   { top: 0; opacity: 0; }
+      10%  { opacity: 1; }
+      90%  { opacity: 1; }
+      100% { top: 100%; opacity: 0; }
+    }
+
+    /* Overall progress ring */
+    .progress-ring-wrap {
+      position: relative;
+      width: 72px;
+      height: 72px;
+    }
+
+    .progress-ring-wrap svg { transform: rotate(-90deg); }
+
+    .big-percent {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      font-weight: 800;
+      color: var(--text-primary);
+    }
+
+    /* Particle dots decoration */
+    .particle {
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0;
+      animation: particleFade 3s ease-in-out infinite;
+    }
+
+    @keyframes particleFade {
+      0%,100% { opacity: 0; transform: scale(0.5); }
+      50%      { opacity: 0.6; transform: scale(1); }
+    }
+  </style>
+</head>
+<body class="analyzing-page">
+
+<!-- Minimal nav -->
+<nav class="pm-navbar navbar" style="border-bottom:1px solid var(--border-light);">
+  <div class="container">
+    <a class="navbar-brand d-flex align-items-center gap-2" href="index.html">
+      <div class="pm-logo-mark">PM</div>
+      <span class="pm-logo-text">Perfect <span>Match</span></span>
+    </a>
+    <!-- Step indicator (minimal) -->
+    <div class="d-none d-md-flex pm-steps" style="margin:0;gap:0;">
+      <div class="pm-step completed"><div class="pm-step-num"><i class="bi bi-check"></i></div><div class="pm-step-label">Capture</div></div>
+      <div class="pm-step-connector filled"></div>
+      <div class="pm-step completed"><div class="pm-step-num"><i class="bi bi-check"></i></div><div class="pm-step-label">Align</div></div>
+      <div class="pm-step-connector filled"></div>
+      <div class="pm-step active"><div class="pm-step-num">3</div><div class="pm-step-label">Analyze</div></div>
+      <div class="pm-step-connector"></div>
+      <div class="pm-step"><div class="pm-step-num">4</div><div class="pm-step-label">Results</div></div>
+    </div>
+    <div></div>
+  </div>
+</nav>
+
+<!-- Main content -->
+<main class="flex-grow-1 d-flex align-items-center justify-content-center py-5">
+  <div class="container">
+    <div class="d-flex flex-column align-items-center text-center gap-4">
+
+      <!-- Heading -->
+      <div class="animate-fade-up">
+        <div class="eyebrow mb-2">Processing</div>
+        <h1 style="font-family:var(--font-display);font-size:clamp(1.6rem,3vw,2.2rem);font-weight:700;color:var(--text-primary);margin-bottom:0.5rem;">
+          Analyzing Your Skin
+        </h1>
+        <p style="color:var(--text-muted);font-size:0.9rem;max-width:40ch;margin:0 auto;">
+          Please wait while Perfect Match analyzes your image.
+        </p>
+      </div>
+
+      <!-- Image + spinner -->
+      <div class="animate-fade-up animate-delay-1" style="position:relative;">
+        <!-- Outer ring spinner -->
+        <div style="position:relative;width:148px;height:148px;display:flex;align-items:center;justify-content:center;">
+          <!-- Spinning ring -->
+          <div style="position:absolute;inset:0;border-radius:50%;border:3px solid var(--bg-beige);border-top-color:var(--pm-gold);border-right-color:var(--pm-rose);animation:pmSpin 1.4s linear infinite;"></div>
+          <!-- Second ring (opposite direction) -->
+          <div style="position:absolute;inset:6px;border-radius:50%;border:2px solid transparent;border-bottom-color:rgba(184,147,90,0.3);animation:pmSpin 2s linear infinite reverse;"></div>
+
+          <!-- Image circle -->
+          <div class="image-preview-circle" style="width:110px;height:110px;">
+            <img id="analyzePreviewImg" src="" alt="Your photo" style="display:none;" />
+            <div id="analyzeImgPlaceholder" style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:2rem;color:var(--text-light);">
+              <i class="bi bi-person-fill"></i>
+            </div>
+            <!-- Scan line overlay -->
+            <div class="scan-overlay">
+              <div class="scan-line"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Floating particles -->
+        <div class="particle" style="width:8px;height:8px;background:var(--pm-gold);top:10px;left:-10px;animation-delay:0s;"></div>
+        <div class="particle" style="width:6px;height:6px;background:var(--pm-rose);top:20px;right:-12px;animation-delay:0.7s;"></div>
+        <div class="particle" style="width:5px;height:5px;background:var(--pm-tan);bottom:15px;left:-5px;animation-delay:1.4s;"></div>
+      </div>
+
+      <!-- Analysis card -->
+      <div class="analysis-card animate-fade-up animate-delay-2">
+        <!-- Overall progress -->
+        <div class="d-flex align-items-center gap-3 mb-4 pb-3" style="border-bottom:1px solid var(--border-light);">
+          <div class="progress-ring-wrap">
+            <svg width="72" height="72" viewBox="0 0 72 72">
+              <defs>
+                <linearGradient id="confGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" style="stop-color:var(--pm-gold)" />
+                  <stop offset="100%" style="stop-color:var(--pm-rose)" />
+                </linearGradient>
+              </defs>
+              <circle cx="36" cy="36" r="30" fill="none" stroke="var(--bg-beige)" stroke-width="5" />
+              <circle id="progressRing" cx="36" cy="36" r="30" fill="none" stroke="url(#confGrad2)" stroke-width="5"
+                stroke-linecap="round" stroke-dasharray="188.5" stroke-dashoffset="188.5"
+                style="transition: stroke-dashoffset 0.6s ease;" />
+            </svg>
+            <div class="big-percent" id="overallPercent">0%</div>
+          </div>
+          <div class="flex-grow-1 text-start">
+            <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-light);margin-bottom:4px;">Overall Progress</div>
+            <div id="overallStatusText" style="font-size:0.9rem;font-weight:600;color:var(--text-primary);">Starting analysis…</div>
+            <div id="overallSubText" style="font-size:0.78rem;color:var(--text-muted);margin-top:2px;">Preparing your image</div>
+          </div>
+        </div>
+
+        <!-- Status items -->
+        <div class="d-flex flex-column gap-1" id="statusList">
+
+          <div class="status-item" id="statusFaceDetect">
+            <div class="status-icon-wrap loading" id="iconFaceDetect">
+              <div class="pm-spinner sm" style="width:16px;height:16px;border-width:2px;"></div>
+            </div>
+            <div class="status-text-wrap">
+              <div class="status-title active" id="titleFaceDetect">Face Detection</div>
+              <div class="status-sub" id="subFaceDetect">Locating face in image…</div>
+            </div>
+            <div class="status-percent" id="pctFaceDetect"></div>
+          </div>
+
+          <div class="status-item" id="statusLandmarks">
+            <div class="status-icon-wrap pending" id="iconLandmarks"><i class="bi bi-circle"></i></div>
+            <div class="status-text-wrap">
+              <div class="status-title" id="titleLandmarks">Facial Landmarks</div>
+              <div class="status-sub" id="subLandmarks">Waiting…</div>
+            </div>
+            <div class="status-percent" id="pctLandmarks"></div>
+          </div>
+
+          <div class="status-item" id="statusSkinTone">
+            <div class="status-icon-wrap pending" id="iconSkinTone"><i class="bi bi-circle"></i></div>
+            <div class="status-text-wrap">
+              <div class="status-title" id="titleSkinTone">Skin Tone Analysis</div>
+              <div class="status-sub" id="subSkinTone">Waiting…</div>
+            </div>
+            <div class="status-percent" id="pctSkinTone"></div>
+          </div>
+
+          <div class="status-item" id="statusSkinType">
+            <div class="status-icon-wrap pending" id="iconSkinType"><i class="bi bi-circle"></i></div>
+            <div class="status-text-wrap">
+              <div class="status-title" id="titleSkinType">Skin Type Analysis</div>
+              <div class="status-sub" id="subSkinType">Waiting…</div>
+            </div>
+            <div class="status-percent" id="pctSkinType"></div>
+          </div>
+
+          <div class="status-item" id="statusPalette">
+            <div class="status-icon-wrap pending" id="iconPalette"><i class="bi bi-circle"></i></div>
+            <div class="status-text-wrap">
+              <div class="status-title" id="titlePalette">Generating Palette</div>
+              <div class="status-sub" id="subPalette">Waiting…</div>
+            </div>
+            <div class="status-percent" id="pctPalette"></div>
+          </div>
+
+        </div>
+
+        <!-- Result preview (shown at end) -->
+        <div id="resultPreview" style="display:none;margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid var(--border-light);">
+          <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--pm-gold);margin-bottom:0.75rem;">
+            <i class="bi bi-check-circle-fill me-1"></i> Detected Results Preview
+          </div>
+          <div class="row g-2">
+            <div class="col-4">
+              <div style="background:var(--bg-soft);border-radius:var(--radius-md);padding:0.6rem;text-align:center;">
+                <div style="font-size:0.68rem;color:var(--text-muted);margin-bottom:2px;">Skin Tone</div>
+                <div style="font-size:0.8rem;font-weight:700;color:var(--text-primary);" id="resTone">Light Morena</div>
+              </div>
+            </div>
+            <div class="col-4">
+              <div style="background:var(--bg-soft);border-radius:var(--radius-md);padding:0.6rem;text-align:center;">
+                <div style="font-size:0.68rem;color:var(--text-muted);margin-bottom:2px;">Skin Type</div>
+                <div style="font-size:0.8rem;font-weight:700;color:var(--text-primary);" id="resType">Combination</div>
+              </div>
+            </div>
+            <div class="col-4">
+              <div style="background:var(--bg-soft);border-radius:var(--radius-md);padding:0.6rem;text-align:center;">
+                <div style="font-size:0.68rem;color:var(--text-muted);margin-bottom:2px;">Undertone</div>
+                <div style="font-size:0.8rem;font-weight:700;color:var(--text-primary);" id="resUndertone">Warm</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tip while waiting -->
+      <div class="animate-fade-up animate-delay-3" style="max-width:420px;">
+        <div class="pm-alert pm-alert-info" id="waitingTip">
+          <i class="bi bi-lightbulb flex-shrink-0"></i>
+          <span id="waitingTipText">Warm undertones pair beautifully with terracotta, peach, and warm rose shades.</span>
+        </div>
+      </div>
+
+      <!-- Cancel -->
+      <a href="try-it.html" id="backBtn" class="btn-pm-ghost animate-fade-up animate-delay-4" style="font-size:0.82rem;color:var(--text-muted);">
+        <i class="bi bi-arrow-left"></i> Go Back
+      </a>
+
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="assets/js/app.js"></script>
+<script>
+  // Load image
+  const imgData = sessionStorage.getItem('pm_analysis_image');
+  const previewImg = document.getElementById('analyzePreviewImg');
+  const placeholder = document.getElementById('analyzeImgPlaceholder');
+  if (imgData) {
+    previewImg.src = imgData;
+    previewImg.style.display = 'block';
+    placeholder.style.display = 'none';
+  }
+
+  // Rotating tips
+  const tips = [
+    'Warm undertones pair beautifully with terracotta, peach, and warm rose shades.',
+    'For combination skin, look for long-lasting formulas that balance moisture and control.',
+    'Light Morena skin tones shine in bronze, gold, and burnt orange eyeshadows.',
+    'A warm-toned foundation with a natural finish can enhance your complexion beautifully.',
+    'Blush shades in warm peach or coral give Light Morena skin a healthy, natural glow.',
+    'Undertone detection helps find lip colors that harmonize with your skin rather than clash.'
+  ];
+  let tipIdx = 0;
+  const tipEl = document.getElementById('waitingTipText');
+  setInterval(() => {
+    tipIdx = (tipIdx + 1) % tips.length;
+    tipEl.style.opacity = '0';
+    setTimeout(() => {
+      tipEl.textContent = tips[tipIdx];
+      tipEl.style.opacity = '1';
+    }, 300);
+    tipEl.style.transition = 'opacity 0.3s ease';
+  }, 4000);
+
+  // ---- Analysis simulation ----
+  // Maps each step to { icon ID, title ID, sub ID, pct ID, statusItem ID }
+  const steps = [
+    {
+      id: 'FaceDetect',
+      title: 'Face Detection',
+      subDoing: 'Looking for exactly one face in your photo…',
+      subDone:  'Face detected successfully.',
+      pct: '20%',
+      percent: 20,
+      delay: 1200,
+      overallText: 'Detecting face…',
+      overallSub:  'Running OpenCV face detection'
+    },
+    {
+      id: 'Landmarks',
+      title: 'Facial Landmarks',
+      subDoing: 'Mapping 468 facial landmarks…',
+      subDone:  'Facial regions identified.',
+      pct: '40%',
+      percent: 40,
+      delay: 1800,
+      overallText: 'Mapping facial landmarks…',
+      overallSub:  'Identifying cheeks, forehead, and chin regions'
+    },
+    {
+      id: 'SkinTone',
+      title: 'Skin Tone Analysis',
+      subDoing: 'Sampling skin pixels and calculating tone…',
+      subDone:  'Skin tone identified: Light Morena.',
+      pct: '65%',
+      percent: 65,
+      delay: 2000,
+      overallText: 'Analyzing skin tone…',
+      overallSub:  'Extracting color profile from facial regions'
+    },
+    {
+      id: 'SkinType',
+      title: 'Skin Type Analysis',
+      subDoing: 'Analyzing surface characteristics…',
+      subDone:  'Skin type identified: Combination.',
+      pct: '85%',
+      percent: 85,
+      delay: 1800,
+      overallText: 'Analyzing skin type…',
+      overallSub:  'Evaluating oiliness, texture, and moisture indicators'
+    },
+    {
+      id: 'Palette',
+      title: 'Generating Palette',
+      subDoing: 'Matching colors to your skin profile…',
+      subDone:  'Personalized palette generated.',
+      pct: '100%',
+      percent: 100,
+      delay: 1600,
+      overallText: 'Generating your palette…',
+      overallSub:  'Matching makeup colors to your profile'
+    }
+  ];
+
+  const progressRing = document.getElementById('progressRing');
+  const circumference = 188.5;
+
+  function setProgress(percent) {
+    const offset = circumference - (percent / 100) * circumference;
+    progressRing.style.strokeDashoffset = offset;
+    document.getElementById('overallPercent').textContent = percent + '%';
+  }
+
+  function activateStep(step) {
+    const icon    = document.getElementById('icon' + step.id);
+    const title   = document.getElementById('title' + step.id);
+    const sub     = document.getElementById('sub' + step.id);
+    const item    = document.getElementById('status' + step.id);
+
+    icon.className = 'status-icon-wrap loading';
+    icon.innerHTML = '<div class="pm-spinner sm" style="width:16px;height:16px;border-width:2px;"></div>';
+    title.className = 'status-title active';
+    sub.textContent = step.subDoing;
+    item.classList.add('active-step');
+
+    document.getElementById('overallStatusText').textContent = step.overallText;
+    document.getElementById('overallSubText').textContent    = step.overallSub;
+  }
+
+  function completeStep(step) {
+    const icon  = document.getElementById('icon' + step.id);
+    const title = document.getElementById('title' + step.id);
+    const sub   = document.getElementById('sub' + step.id);
+    const item  = document.getElementById('status' + step.id);
+    const pct   = document.getElementById('pct' + step.id);
+
+    icon.className  = 'status-icon-wrap done';
+    icon.innerHTML  = '<i class="bi bi-check-lg"></i>';
+    title.className = 'status-title done';
+    sub.textContent = step.subDone;
+    item.classList.remove('active-step');
+    pct.textContent = step.pct;
+
+    setProgress(step.percent);
+  }
+
+  // ---- Real analysis: send the photo to the backend ----
+  sessionStorage.removeItem('pm_result');
+
+  const ERROR_TEXT = {
+    no_face:        "We couldn't detect a face in your photo. Please use a clear, front-facing photo with your whole face visible.",
+    multiple_faces: 'Multiple faces were detected. Please use a photo with only one face.',
+    no_skin:        "We couldn't read your skin color. Please retake the photo in good, even lighting.",
+    invalid_image:  'That image could not be read. Please use a JPG or PNG photo.',
+    offline:        'The server is not reachable. Start it with "python app.py" and open the site at http://127.0.0.1:5000.'
+  };
+
+  // Starts right away; the animation below waits for it.
+  const apiPromise = (async () => {
+    if (!imgData) return { error: true, code: 'invalid_image' };
+    try {
+      const res  = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: imgData })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { error: true, code: data.code || 'invalid_image', message: data.error };
+      return { error: false, data };
+    } catch (e) {
+      return { error: true, code: 'offline' };
+    }
+  })();
+
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+
+  // Show a failed step and let the person try another photo
+  function failStep(step, code, message) {
+    const text = ERROR_TEXT[code] || message || 'Something went wrong. Please try another photo.';
+    const icon = document.getElementById('icon' + step.id);
+    icon.className = 'status-icon-wrap error';
+    icon.innerHTML = '<i class="bi bi-x-lg"></i>';
+    document.getElementById('sub' + step.id).textContent = text;
+    document.getElementById('statusFaceDetect').classList.remove('active-step');
+    document.getElementById('overallStatusText').textContent = "We couldn't analyze this photo";
+    document.getElementById('overallSubText').textContent    = text;
+    setProgress(0);
+
+    const back = document.getElementById('backBtn');
+    back.removeAttribute('style');
+    back.className = 'btn-pm-primary animate-fade-up';
+    back.innerHTML = '<i class="bi bi-arrow-counterclockwise"></i> Try Another Photo';
+  }
+
+  // Run the sequence
+  async function runAnalysis() {
+    let result = null;
+
+    for (let i = 0; i < steps.length; i++) {
+      const step = steps[i];
+      activateStep(step);
+
+      if (i === 0) {
+        // Face detection: wait for the real answer from the server
+        const [, r] = await Promise.all([wait(step.delay), apiPromise]);
+        result = r;
+        if (result.error) { failStep(step, result.code, result.message); return; }
+
+        // Put the REAL results into the remaining steps and the summary box
+        const d = result.data;
+        steps[2].subDone = 'Skin tone identified: ' + d.skinTone + '.';
+        steps[3].subDone = 'Skin type identified: ' + d.skinType + '.';
+        document.getElementById('resTone').textContent        = d.skinTone;
+        document.getElementById('resType').textContent        = d.skinType;
+        document.getElementById('resUndertone').textContent   = d.undertone;
+        sessionStorage.setItem('pm_result', JSON.stringify(d));
+      } else {
+        await wait(step.delay);
+      }
+
+      completeStep(step);
+      await wait(200);
+    }
+
+    // All done
+    document.getElementById('overallStatusText').textContent = 'Analysis complete!';
+    document.getElementById('overallSubText').textContent    = 'Your personalized palette is ready.';
+    document.getElementById('resultPreview').style.display   = 'block';
+
+    // Redirect
+    setTimeout(() => { window.location.href = 'results.html'; }, 1800);
+  }
+
+  // Small initial delay, then run
+  setTimeout(runAnalysis, 600);
+</script>
+</body>
+</html>

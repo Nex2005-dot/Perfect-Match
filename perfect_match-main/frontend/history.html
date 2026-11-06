@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Results — Perfect Match</title>
+  <meta name="description" content="View all your previous skin analyses and personalized makeup color palettes." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+  <link href="assets/css/main.css" rel="stylesheet" />
+  <style>
+    /* ---- Stat cards ---- */
+    .stat-card {
+      background: var(--pm-white);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      box-shadow: var(--shadow-xs);
+      transition: var(--transition);
+    }
+    .stat-card:hover { box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+    .stat-icon {
+      width: 46px; height: 46px;
+      border-radius: var(--radius-md);
+      background: var(--bg-soft);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem;
+      color: var(--pm-gold);
+      flex-shrink: 0;
+    }
+    .stat-value {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1;
+    }
+    .stat-label { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+
+    /* ---- Toolbar ---- */
+    .results-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .filter-btn {
+      padding: 0.42rem 0.9rem;
+      border-radius: var(--radius-full);
+      border: 1.5px solid var(--border-light);
+      background: var(--pm-white);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .filter-btn:hover { border-color: var(--pm-tan); background: var(--bg-soft); color: var(--text-primary); }
+    .filter-btn.active { background: var(--pm-brown-dark); border-color: var(--pm-brown-dark); color: white; }
+
+    .sort-select {
+      padding: 0.42rem 0.85rem;
+      border-radius: var(--radius-full);
+      border: 1.5px solid var(--border-light);
+      background: var(--pm-white);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      outline: none;
+      transition: var(--transition);
+      -webkit-appearance: none;
+      padding-right: 1.6rem;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23A07860' d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.55rem center;
+      background-size: 10px;
+    }
+    .sort-select:focus { border-color: var(--pm-gold); box-shadow: 0 0 0 3px rgba(184,147,90,0.12); }
+
+    /* ---- History card ---- */
+    .hcard {
+      background: var(--pm-white);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-xs);
+      transition: var(--transition);
+      display: flex;
+      flex-direction: column;
+    }
+    .hcard:hover { box-shadow: var(--shadow-md); border-color: var(--pm-tan); transform: translateY(-2px); }
+
+    .hcard-thumb {
+      width: 100%;
+      aspect-ratio: 4/3;
+      background: linear-gradient(135deg, var(--bg-soft), var(--pm-beige-mid));
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .hcard-thumb img { width:100%; height:100%; object-fit:cover; }
+    .hcard-thumb-placeholder { font-size:2.5rem; color:var(--text-light); }
+
+    .hcard-date-badge {
+      position: absolute;
+      top: 10px; left: 10px;
+      background: rgba(61,35,20,0.7);
+      color: white;
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: var(--radius-full);
+      letter-spacing: 0.04em;
+    }
+
+    .hcard-body { padding: 1.1rem; flex: 1; display: flex; flex-direction: column; gap: 0.6rem; }
+
+    .hcard-tone-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex-wrap: wrap;
+    }
+    .hcard-tag {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      background: var(--bg-soft);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-light);
+    }
+    .hcard-tag.tone  { background: rgba(184,147,90,0.1); color: var(--pm-gold);    border-color: rgba(184,147,90,0.2); }
+    .hcard-tag.type  { background: rgba(107,76,59,0.08); color: var(--pm-brown);   border-color: rgba(107,76,59,0.15); }
+    .hcard-tag.under { background: rgba(193,123,123,0.1); color: var(--pm-rose);   border-color: rgba(193,123,123,0.2); }
+
+    .hcard-palette-row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .hcard-dot {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.9);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+    .hcard-palette-label {
+      font-size: 0.68rem;
+      color: var(--text-light);
+      margin-left: 4px;
+    }
+
+    .hcard-footer {
+      padding: 0.85rem 1.1rem;
+      border-top: 1px solid var(--border-light);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    /* ---- List view ---- */
+    .hlist-item {
+      background: var(--pm-white);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: 1rem 1.25rem;
+      display: grid;
+      grid-template-columns: 72px 1fr auto;
+      gap: 1rem;
+      align-items: center;
+      box-shadow: var(--shadow-xs);
+      transition: var(--transition);
+    }
+    .hlist-item:hover { box-shadow: var(--shadow-sm); border-color: var(--pm-tan); transform: translateY(-1px); }
+
+    .hlist-thumb {
+      width: 72px; height: 72px;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      background: var(--bg-soft);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .hlist-thumb img { width:100%; height:100%; object-fit:cover; }
+
+    .view-toggle-btn {
+      width: 34px; height: 34px;
+      border-radius: var(--radius-sm);
+      border: 1.5px solid var(--border-light);
+      background: var(--pm-white);
+      color: var(--text-muted);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: var(--transition);
+      font-size: 0.9rem;
+    }
+    .view-toggle-btn.active { background: var(--pm-brown-dark); color: white; border-color: var(--pm-brown-dark); }
+    .view-toggle-btn:hover:not(.active) { background: var(--bg-soft); color: var(--text-primary); }
+
+    /* ---- Delete confirm modal ---- */
+    .delete-confirm-text {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* ---- Pagination ---- */
+    .pm-pagination {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      justify-content: center;
+    }
+    .pm-page-btn {
+      width: 34px; height: 34px;
+      border-radius: var(--radius-sm);
+      border: 1.5px solid var(--border-light);
+      background: var(--pm-white);
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .pm-page-btn:hover { background: var(--bg-soft); border-color: var(--pm-tan); }
+    .pm-page-btn.active { background: var(--pm-brown-dark); color: white; border-color: var(--pm-brown-dark); }
+    .pm-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+
+<!-- ===================== NAVBAR ===================== -->
+<nav class="pm-navbar navbar navbar-expand-lg">
+  <div class="container">
+    <a class="navbar-brand pm-navbar-brand" href="index.html">
+      <div class="pm-logo-mark">PM</div>
+      <span class="pm-logo-text">Perfect <span>Match</span></span>
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#pmNavbar">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="pmNavbar">
+      <ul class="navbar-nav mx-auto gap-1">
+        <li class="nav-item"><a class="nav-link" href="index.html">Home</a></li>
+        <li class="nav-item"><a class="nav-link" href="try-it.html">Try It</a></li>
+        <li class="nav-item"><a class="nav-link active" href="history.html">My Results</a></li>
+        <li class="nav-item"><a class="nav-link" href="index.html#how-it-works">How It Works</a></li>
+      </ul>
+      <div class="d-flex align-items-center gap-2 mt-3 mt-lg-0">
+        <a href="login.html" class="nav-link btn-nav-login" data-show="guest">Login</a>
+        <a href="register.html" class="nav-link btn-nav-signup" data-show="guest">Sign Up</a>
+        <div class="d-none align-items-center gap-2" data-show="auth" style="display:none!important;">
+          <a href="profile.html" class="btn-pm-ghost" style="font-size:0.875rem;"><i class="bi bi-person-circle"></i> <span data-user-name>Profile</span></a>
+          <a href="profile.html"><div class="pm-logo-mark" style="width:30px;height:30px;font-size:0.75rem;" data-user-initials>A</div></a>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ===================== PAGE HEADER ===================== -->
+<div class="page-header">
+  <div class="container">
+    <div class="d-flex flex-wrap align-items-end justify-content-between gap-3">
+      <div>
+        <div class="eyebrow mb-2">Dashboard</div>
+        <h1 style="font-family:var(--font-display);font-size:clamp(1.5rem,3vw,2rem);font-weight:700;color:var(--text-primary);margin-bottom:0.3rem;">My Results</h1>
+        <p style="color:var(--text-muted);font-size:0.875rem;margin:0;">All your saved skin analyses and personalized palettes.</p>
+      </div>
+      <a href="try-it.html" class="btn-pm-primary" style="padding:0.65rem 1.4rem;font-size:0.875rem;">
+        <i class="bi bi-plus-lg"></i> New Analysis
+      </a>
+    </div>
+  </div>
+</div>
+
+<main class="section-pad-sm">
+  <div class="container">
+
+    <!-- ===== GUEST GATE ===== -->
+    <div id="guestGate" style="display:none;">
+      <div class="empty-state" style="min-height:60vh;">
+        <div class="empty-state-icon" style="font-size:2rem;"><i class="bi bi-lock"></i></div>
+        <h2 style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;color:var(--text-primary);">Sign In to View Your Results</h2>
+        <p style="color:var(--text-muted);font-size:0.9rem;max-width:38ch;text-align:center;line-height:1.65;">
+          Create an account or log in to save your analyses and track your personalized beauty history over time.
+        </p>
+        <div class="d-flex flex-wrap gap-3 justify-content-center mt-2">
+          <a href="login.html" class="btn-pm-primary"><i class="bi bi-box-arrow-in-right"></i> Log In</a>
+          <a href="register.html" class="btn-pm-secondary"><i class="bi bi-person-plus"></i> Create Account</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== AUTHENTICATED CONTENT ===== -->
+    <div id="authContent" style="display:none;">
+
+      <!-- Stats row -->
+      <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+          <div class="stat-card">
+            <div class="stat-icon"><i class="bi bi-camera-fill"></i></div>
+            <div>
+              <div class="stat-value" id="statTotal">0</div>
+              <div class="stat-label">Total Analyses</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="stat-card">
+            <div class="stat-icon" style="color:var(--pm-rose);"><i class="bi bi-palette2"></i></div>
+            <div>
+              <div class="stat-value" id="statTones">0</div>
+              <div class="stat-label">Tone Categories</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="stat-card">
+            <div class="stat-icon" style="color:var(--pm-brown-mid);"><i class="bi bi-stars"></i></div>
+            <div>
+              <div class="stat-value" id="statColors">0</div>
+              <div class="stat-label">Colors Matched</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="stat-card">
+            <div class="stat-icon" style="color:#5EAB72;"><i class="bi bi-calendar-check"></i></div>
+            <div>
+              <div class="stat-value" id="statLast">-</div>
+              <div class="stat-label">Last Analysis</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+        <!-- Left: search + filters -->
+        <div class="d-flex flex-wrap align-items-center gap-2 flex-grow-1">
+          <div class="pm-search" style="max-width:260px;flex:1 1 200px;">
+            <i class="bi bi-search pm-search-icon"></i>
+            <input type="text" class="pm-input" id="searchInput" placeholder="Search by tone or type…" style="padding:0.42rem 0.9rem 0.42rem 2.4rem;font-size:0.82rem;" oninput="filterCards()" />
+          </div>
+          <button class="filter-btn active" data-filter="all"    onclick="setFilter(this,'all')">All</button>
+          <button class="filter-btn"         data-filter="warm"   onclick="setFilter(this,'warm')">Warm</button>
+          <button class="filter-btn"         data-filter="cool"   onclick="setFilter(this,'cool')">Cool</button>
+          <button class="filter-btn"         data-filter="neutral" onclick="setFilter(this,'neutral')">Neutral</button>
+        </div>
+        <!-- Right: sort + view toggle -->
+        <div class="d-flex align-items-center gap-2">
+          <select class="sort-select" id="sortSelect" onchange="sortCards()">
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="tone">By Skin Tone</option>
+          </select>
+          <div class="d-flex gap-1">
+            <button class="view-toggle-btn active" id="gridViewBtn" title="Grid view" onclick="setView('grid')"><i class="bi bi-grid-3x3-gap-fill"></i></button>
+            <button class="view-toggle-btn" id="listViewBtn" title="List view" onclick="setView('list')"><i class="bi bi-list-ul"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Results count -->
+      <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:1rem;" id="resultCount">Loading…</div>
+
+      <!-- ===== GRID VIEW ===== -->
+      <div id="gridView" class="row g-3 mb-4">
+
+      </div>
+
+      <!-- ===== LIST VIEW ===== -->
+      <div id="listView" class="d-flex flex-column gap-2 mb-4" style="display:none!important;">
+        <!-- List items injected by JS -->
+      </div>
+
+      <!-- ===== EMPTY STATE ===== -->
+      <div id="emptyState" style="display:none;">
+        <div class="empty-state">
+          <div class="empty-state-icon"><i class="bi bi-search"></i></div>
+          <h3 style="font-family:var(--font-display);font-size:1.2rem;font-weight:700;color:var(--text-primary);">No results found</h3>
+          <p style="color:var(--text-muted);font-size:0.875rem;max-width:34ch;text-align:center;">Try adjusting your search or filter to find what you're looking for.</p>
+          <button class="btn-pm-secondary" onclick="resetFilters()">
+            <i class="bi bi-x-circle"></i> Clear Filters
+          </button>
+        </div>
+      </div>
+
+      <!-- ===== NO HISTORY EMPTY STATE ===== -->
+      <div id="noHistoryState" style="display:none;">
+        <div class="empty-state" style="min-height:50vh;">
+          <div class="empty-state-icon" style="font-size:2rem;"><i class="bi bi-clock-history"></i></div>
+          <h3 style="font-family:var(--font-display);font-size:1.4rem;font-weight:700;color:var(--text-primary);">No saved results yet</h3>
+          <p style="color:var(--text-muted);font-size:0.9rem;max-width:38ch;text-align:center;line-height:1.65;">
+            Complete your first skin analysis to start building your personalized beauty history.
+          </p>
+          <a href="try-it.html" class="btn-pm-primary mt-2" style="padding:0.8rem 2rem;">
+            <i class="bi bi-camera-fill"></i> Try It Now
+          </a>
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-2" id="paginationWrap">
+        <span style="font-size:0.8rem;color:var(--text-muted);">Showing <strong>7</strong> of <strong>7</strong> analyses</span>
+        <div class="pm-pagination">
+          <button class="pm-page-btn" disabled><i class="bi bi-chevron-left"></i></button>
+          <button class="pm-page-btn active">1</button>
+          <button class="pm-page-btn" disabled><i class="bi bi-chevron-right"></i></button>
+        </div>
+      </div>
+
+    </div><!-- /authContent -->
+  </div>
+</main>
+
+<!-- Delete confirm modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:400px;">
+    <div class="modal-content" style="border-radius:var(--radius-xl);border:1px solid var(--border-light);box-shadow:var(--shadow-xl);">
+      <div class="modal-header" style="border-bottom:1px solid var(--border-light);padding:1.5rem 1.75rem 1rem;">
+        <h5 class="modal-title" id="deleteModalLabel" style="font-family:var(--font-display);font-size:1.1rem;color:var(--text-primary);">Delete Analysis</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" style="opacity:0.4;"></button>
+      </div>
+      <div class="modal-body" style="padding:1.25rem 1.75rem;">
+        <p class="delete-confirm-text">Are you sure you want to delete this analysis? This action cannot be undone and the result will be permanently removed from your history.</p>
+      </div>
+      <div class="modal-footer" style="border-top:1px solid var(--border-light);padding:1rem 1.75rem 1.5rem;gap:0.75rem;">
+        <button type="button" class="btn-pm-ghost" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn-pm-primary" id="confirmDeleteBtn" style="background:linear-gradient(135deg,#C0392B,#E07272);">
+          <i class="bi bi-trash-fill"></i> Delete
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== FOOTER ===================== -->
+<footer class="pm-footer">
+  <div class="container">
+    <div class="row gy-3">
+      <div class="col-md-6">
+        <a href="index.html" class="d-flex align-items-center gap-2 text-decoration-none mb-2">
+          <div class="pm-logo-mark" style="width:28px;height:28px;font-size:0.75rem;">PM</div>
+          <span class="pm-logo-text" style="color:rgba(255,255,255,0.8);">Perfect <span style="color:var(--pm-gold-light);">Match</span></span>
+        </a>
+        <p class="disclaimer-text">Perfect Match provides cosmetic color recommendations only and is not a medical or dermatological diagnostic tool.</p>
+      </div>
+      <div class="col-md-6 d-flex justify-content-md-end align-items-end">
+        <p class="pm-footer-bottom">© 2026 Perfect Match. BSIT Undergraduate Research Project.</p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="assets/js/app.js"></script>
+<script>
+  let currentView   = 'grid';
+  let activeFilter  = 'all';
+  let cardToDelete  = null;
+
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+  const fmtDate = iso => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    // Guests: no history. Only people who are logged in (server session) see their saved analyses.
+    let loggedIn = false;
+    try {
+      const me = await (await fetch('/api/me')).json();
+      loggedIn = !!me.user;
+      if (loggedIn) Auth.login(me.user); 
+    } catch (e) {}
+
+    if (!loggedIn) {
+      sessionStorage.removeItem('pm_logged_in');
+      sessionStorage.removeItem('pm_user');
+      document.getElementById('guestGate').style.display   = 'block';
+      document.getElementById('authContent').style.display = 'none';
+      return;
+    }
+    document.getElementById('authContent').style.display = 'block';
+    document.getElementById('guestGate').style.display   = 'none';
+    loadHistory();
+  });
+
+  // ---- Load saved analyses from the database ----
+  async function loadHistory() {
+    let items = [];
+    try {
+      const res = await fetch('/api/analyses');
+      if (res.ok) items = (await res.json()).analyses;
+    } catch (e) { showToast('Cannot reach the server.', 'error'); }
+
+    const grid = document.getElementById('gridView');
+    grid.innerHTML = items.map(a => `
+      <div class="col-sm-6 col-lg-4 hcard-wrap" data-id="${esc(a.id)}" data-tone="${esc(a.skinTone.toLowerCase())}" data-type="${esc(a.skinType.toLowerCase())}" data-undertone="${esc(a.undertone.toLowerCase())}" data-date="${esc(a.createdAt.slice(0,10))}">
+        <div class="hcard h-100">
+          <div class="hcard-thumb">
+            ${a.image
+              ? `<img src="${a.image}" alt="Saved photo" style="width:100%;height:100%;object-fit:cover;">`
+              : `<div class="hcard-thumb-placeholder"><i class="bi bi-person-fill"></i></div>`}
+            <div class="hcard-date-badge">${esc(fmtDate(a.createdAt))}</div>
+          </div>
+          <div class="hcard-body">
+            <div style="font-size:0.95rem;font-weight:700;color:var(--text-primary);font-family:var(--font-display);">${esc(a.skinTone)}</div>
+            <div class="hcard-tone-row">
+              <span class="hcard-tag tone">${esc(a.skinTone)}</span>
+              <span class="hcard-tag type">${esc(cap(a.skinType))}</span>
+              <span class="hcard-tag under">${esc(cap(a.undertone))}</span>
+            </div>
+            <div>
+              <div style="font-size:0.68rem;color:var(--text-light);margin-bottom:5px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;">Recommended Palette</div>
+              <div class="hcard-palette-row">
+                ${a.palettePreview.map(c => `<div class="hcard-dot" style="background:${esc(c)};"></div>`).join('')}
+              </div>
+            </div>
+          </div>
+          <div class="hcard-footer">
+            <span style="font-size:0.75rem;color:var(--text-muted);display:flex;align-items:center;gap:4px;">
+              <i class="bi bi-check-circle-fill" style="color:#4CAF50;"></i> ${esc(a.confidence)}% confidence
+            </span>
+            <div class="d-flex gap-2">
+              <button class="btn-pm-ghost" style="font-size:0.75rem;padding:4px 8px;" onclick="deleteResult(this)" title="Delete"><i class="bi bi-trash"></i></button>
+              <a href="#" class="btn-pm-primary" style="font-size:0.75rem;padding:5px 12px;" onclick="viewAnalysis('${esc(a.id)}'); return false;">View <i class="bi bi-arrow-right"></i></a>
+            </div>
+          </div>
+        </div>
+      </div>`).join('');
+
+    // stats
+    const tones = new Set(items.map(a => a.skinTone));
+    const colors = new Set(items.flatMap(a => a.palettePreview));
+    document.getElementById('statTotal').textContent  = items.length;
+    document.getElementById('statTones').textContent  = tones.size;
+    document.getElementById('statColors').textContent = colors.size;
+    document.getElementById('statLast').textContent   = items.length ? fmtDate(items[0].createdAt).replace(/, \d{4}$/, '') : '-';
+
+    const empty = items.length === 0;
+    document.getElementById('noHistoryState').style.display = empty ? 'block' : 'none';
+    document.getElementById('resultCount').style.display    = empty ? 'none' : '';
+    grid.style.display = empty ? 'none' : '';
+
+    buildListView();
+    updateCount(items.length);
+  }
+
+  // ---- Re-open a saved analysis on the results page (palette + photo come from the database) ----
+  async function viewAnalysis(id) {
+    try {
+      const res = await fetch('/api/analyses/' + encodeURIComponent(id));
+      if (!res.ok) { showToast('Could not open that analysis.', 'error'); return; }
+      const a = (await res.json()).analysis;
+      sessionStorage.setItem('pm_result', JSON.stringify({
+        skinTone: a.skinTone, skinType: a.skinType, undertone: a.undertone,
+        confidence: a.confidence, palette: a.palette, guest: false, locked: {}
+      }));
+      if (a.image) sessionStorage.setItem('pm_analysis_image', a.image);
+      else sessionStorage.removeItem('pm_analysis_image');
+      window.location.href = 'results.html';
+    } catch (e) { showToast('Cannot reach the server.', 'error'); }
+  }
+
+  // ---- View toggle ----
+  function setView(view) {
+    currentView = view;
+    const gridBtn = document.getElementById('gridViewBtn');
+    const listBtn = document.getElementById('listViewBtn');
+    const gridEl  = document.getElementById('gridView');
+    const listEl  = document.getElementById('listView');
+
+    gridBtn.classList.toggle('active', view === 'grid');
+    listBtn.classList.toggle('active', view === 'list');
+    gridEl.style.display  = view === 'grid' ? '' : 'none';
+    listEl.style.display  = view === 'list' ? 'flex' : 'none';
+  }
+
+  // ---- Build list view ----
+  function buildListView() {
+    const cards    = [...document.querySelectorAll('.hcard-wrap')];
+    const listEl   = document.getElementById('listView');
+    listEl.innerHTML = '';
+
+    cards.forEach(wrap => {
+      const tone  = wrap.dataset.tone;
+      const type  = wrap.dataset.type;
+      const under = wrap.dataset.undertone;
+      const date  = wrap.querySelector('.hcard-date-badge')?.textContent || '';
+      const title = wrap.querySelector('.hcard-body > div')?.textContent || tone;
+      const dots  = [...wrap.querySelectorAll('.hcard-dot')].map(d => d.style.background);
+
+      const item = document.createElement('div');
+      item.className    = 'hlist-item hcard-wrap'; item.dataset.id = wrap.dataset.id;
+      item.dataset.tone = tone; item.dataset.type = type; item.dataset.undertone = under;
+
+      item.innerHTML = `
+        <div class="hlist-thumb">${wrap.querySelector('.hcard-thumb img') ? `<img src="${wrap.querySelector('.hcard-thumb img').src}" alt="" style="width:100%;height:100%;object-fit:cover;">` : `<div style="font-size:1.5rem;color:var(--text-light);"><i class="bi bi-person-fill"></i></div>`}</div>
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+            <span style="font-size:0.95rem;font-weight:700;color:var(--text-primary);font-family:var(--font-display);">${title}</span>
+            <span style="font-size:0.72rem;color:var(--text-muted);">${date}</span>
+          </div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px;">
+            <span class="hcard-tag tone">${tone.charAt(0).toUpperCase()+tone.slice(1)}</span>
+            <span class="hcard-tag type">${type.charAt(0).toUpperCase()+type.slice(1)}</span>
+            <span class="hcard-tag under">${under.charAt(0).toUpperCase()+under.slice(1)}</span>
+          </div>
+          <div style="display:flex;gap:4px;align-items:center;">
+            ${dots.slice(0,5).map(c=>`<div style="width:18px;height:18px;border-radius:50%;background:${c};border:2px solid rgba(255,255,255,0.9);box-shadow:0 1px 3px rgba(0,0,0,0.1);"></div>`).join('')}
+          </div>
+        </div>
+        <div class="d-flex flex-column gap-2 align-items-end">
+          <a href="#" onclick="viewAnalysis('${wrap.dataset.id}'); return false;" class="btn-pm-primary" style="font-size:0.75rem;padding:5px 12px;white-space:nowrap;">
+            View <i class="bi bi-arrow-right"></i>
+          </a>
+          <button class="btn-pm-ghost" style="font-size:0.75rem;padding:4px 8px;" onclick="deleteResult(this)" title="Delete">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      `;
+      listEl.appendChild(item);
+    });
+  }
+
+  // ---- Filter ----
+  function setFilter(btn, filter) {
+    activeFilter = filter;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    applyFilters();
+  }
+
+  function filterCards() { applyFilters(); }
+
+  function applyFilters() {
+    const query   = (document.getElementById('searchInput').value || '').toLowerCase();
+    const wraps   = document.querySelectorAll('.hcard-wrap');
+    let visible   = 0;
+
+    wraps.forEach(wrap => {
+      const tone  = wrap.dataset.tone      || '';
+      const type  = wrap.dataset.type      || '';
+      const under = wrap.dataset.undertone || '';
+      const text  = (tone + ' ' + type + ' ' + under).toLowerCase();
+
+      const matchFilter = activeFilter === 'all' || under === activeFilter;
+      const matchSearch = !query || text.includes(query);
+      const show        = matchFilter && matchSearch;
+
+      wrap.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+
+    document.getElementById('emptyState').style.display   = visible === 0 ? 'block' : 'none';
+    document.getElementById('paginationWrap').style.display = visible === 0 ? 'none' : '';
+    updateCount(visible);
+  }
+
+  function resetFilters() {
+    document.getElementById('searchInput').value = '';
+    setFilter(document.querySelector('.filter-btn[data-filter="all"]'), 'all');
+  }
+
+  // ---- Sort ----
+  function sortCards() {
+    const sortVal = document.getElementById('sortSelect').value;
+    const grid    = document.getElementById('gridView');
+    const wraps   = [...grid.querySelectorAll('.hcard-wrap')];
+
+    wraps.sort((a, b) => {
+      if (sortVal === 'newest') return new Date(b.dataset.date) - new Date(a.dataset.date);
+      if (sortVal === 'oldest') return new Date(a.dataset.date) - new Date(b.dataset.date);
+      if (sortVal === 'tone')   return (a.dataset.tone || '').localeCompare(b.dataset.tone || '');
+      return 0;
+    });
+    wraps.forEach(w => grid.appendChild(w));
+    buildListView();
+  }
+
+  // ---- Count ----
+  function updateCount(n) {
+    const total = n !== undefined ? n : document.querySelectorAll('.hcard-wrap:not([style*="display: none"])').length;
+    document.getElementById('resultCount').textContent = `Showing ${total} ${total === 1 ? 'analysis' : 'analyses'}`;
+  }
+
+  // ---- Delete ----
+  function deleteResult(btn) {
+    cardToDelete = btn.closest('.hcard-wrap') || btn.closest('.hlist-item');
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+  }
+
+  document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
+    if (cardToDelete) {
+      const id = cardToDelete.dataset.id;
+      cardToDelete = null;
+      try {
+        const res = await fetch('/api/analyses/' + encodeURIComponent(id), { method: 'DELETE' });
+        if (res.ok) { showToast('Analysis deleted.', 'info'); await loadHistory(); }
+        else showToast('Could not delete it. Please try again.', 'error');
+      } catch (e) { showToast('Cannot reach the server.', 'error'); }
+    }
+    bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+  });
+</script>
+</body>
+</html>

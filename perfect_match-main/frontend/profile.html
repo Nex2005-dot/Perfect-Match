@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Profile — Perfect Match</title>
+  <meta name="description" content="Manage your Perfect Match account, edit your profile, and view your account settings." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+  <link href="assets/css/main.css" rel="stylesheet" />
+  <style>
+    /* ---- Profile sidebar ---- */
+    .profile-sidebar {
+      background: var(--pm-white);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-xl);
+      padding: 2rem 1.5rem;
+      box-shadow: var(--shadow-sm);
+      position: sticky;
+      top: 80px;
+    }
+
+    .profile-sidebar-nav { display: flex; flex-direction: column; gap: 2px; margin-top: 1.5rem; }
+
+    .sidebar-nav-link {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.65rem 0.9rem;
+      border-radius: var(--radius-md);
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: var(--transition);
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      text-decoration: none;
+    }
+    .sidebar-nav-link:hover { background: var(--bg-soft); color: var(--text-primary); }
+    .sidebar-nav-link.active { background: rgba(184,147,90,0.1); color: var(--pm-gold); font-weight: 600; }
+    .sidebar-nav-link.active i { color: var(--pm-gold); }
+    .sidebar-nav-link.danger { color: #C0392B; }
+    .sidebar-nav-link.danger:hover { background: rgba(192,57,43,0.07); }
+
+    .sidebar-nav-divider { height: 1px; background: var(--border-light); margin: 0.5rem 0; }
+
+    /* ---- Panel ---- */
+    .profile-panel {
+      background: var(--pm-white);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 1.5rem 1.75rem;
+      border-bottom: 1px solid var(--border-light);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .panel-body { padding: 1.75rem; }
+
+    /* ---- Info rows ---- */
+    .info-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.9rem 0;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .info-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .info-label { font-size: 0.78rem; font-weight: 700; color: var(--text-muted); letter-spacing: 0.06em; text-transform: uppercase; min-width: 100px; margin-top: 2px; }
+    .info-value { font-size: 0.9rem; color: var(--text-primary); font-weight: 500; flex: 1; }
+    .info-value.muted { color: var(--text-muted); font-style: italic; }
+
+    /* ---- Stats grid ---- */
+    .profile-stat {
+      background: var(--bg-soft);
+      border-radius: var(--radius-lg);
+      padding: 1.1rem;
+      text-align: center;
+    }
+    .profile-stat-value {
+      font-family: var(--font-display);
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1;
+    }
+    .profile-stat-label { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+
+    /* ---- Recent palette ---- */
+    .recent-palette-item {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .recent-palette-item:last-child { border-bottom: none; }
+
+    /* ---- Danger zone ---- */
+    .danger-zone-card {
+      border: 1.5px solid rgba(192,57,43,0.2);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      background: rgba(192,57,43,0.03);
+    }
+
+    /* ---- Account badge ---- */
+    .account-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(76,175,80,0.1);
+      color: #2E7D32;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 3px 10px;
+      border-radius: var(--radius-full);
+      border: 1px solid rgba(76,175,80,0.2);
+    }
+
+    /* ---- Tab pills ---- */
+    .profile-tabs {
+      display: flex;
+      gap: 2px;
+      border-bottom: 1px solid var(--border-light);
+      padding: 0 1.75rem;
+      overflow-x: auto;
+    }
+    .profile-tab {
+      padding: 0.85rem 1.1rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: var(--transition);
+      white-space: nowrap;
+    }
+    .profile-tab:hover { color: var(--text-primary); }
+    .profile-tab.active { color: var(--pm-gold); border-bottom-color: var(--pm-gold); }
+
+    .profile-tab-panel { display: none; }
+    .profile-tab-panel.active { display: block; }
+
+    /* Mobile sidebar collapse */
+    @media (max-width: 991px) {
+      .profile-sidebar { position: static; }
+      .profile-sidebar-nav { flex-direction: row; flex-wrap: wrap; margin-top: 1rem; }
+      .sidebar-nav-link { flex: 1 1 auto; font-size: 0.78rem; padding: 0.5rem 0.75rem; }
+      .sidebar-nav-divider { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===================== NAVBAR ===================== -->
+<nav class="pm-navbar navbar navbar-expand-lg">
+  <div class="container">
+    <a class="navbar-brand pm-navbar-brand" href="index.html">
+      <div class="pm-logo-mark">PM</div>
+      <span class="pm-logo-text">Perfect <span>Match</span></span>
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#pmNavbar">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="pmNavbar">
+      <ul class="navbar-nav mx-auto gap-1">
+        <li class="nav-item"><a class="nav-link" href="index.html">Home</a></li>
+        <li class="nav-item"><a class="nav-link" href="try-it.html">Try It</a></li>
+        <li class="nav-item"><a class="nav-link" href="history.html">My Results</a></li>
+        <li class="nav-item"><a class="nav-link" href="index.html#how-it-works">How It Works</a></li>
+      </ul>
+      <div class="d-flex align-items-center gap-2 mt-3 mt-lg-0">
+        <a href="login.html" class="nav-link btn-nav-login" data-show="guest">Login</a>
+        <a href="register.html" class="nav-link btn-nav-signup" data-show="guest">Sign Up</a>
+        <div class="d-none align-items-center gap-2" data-show="auth" style="display:none!important;">
+          <a href="history.html" class="btn-pm-ghost" style="font-size:0.875rem;"><i class="bi bi-clock-history"></i> My Results</a>
+          <a href="profile.html"><div class="pm-logo-mark" style="width:30px;height:30px;font-size:0.75rem;" data-user-initials>A</div></a>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ===================== PAGE HEADER ===================== -->
+<div class="page-header">
+  <div class="container">
+    <div class="eyebrow mb-2">Account</div>
+    <h1 style="font-family:var(--font-display);font-size:clamp(1.5rem,3vw,2rem);font-weight:700;color:var(--text-primary);margin-bottom:0.3rem;">My Profile</h1>
+    <p style="color:var(--text-muted);font-size:0.875rem;margin:0;">Manage your account information and settings.</p>
+  </div>
+</div>
+
+<main class="section-pad-sm">
+  <div class="container">
+    <div class="row g-4">
+
+      <!-- ===== SIDEBAR ===== -->
+      <div class="col-lg-3">
+        <div class="profile-sidebar">
+          <!-- Avatar -->
+          <div class="d-flex flex-column align-items-center text-center gap-2 pb-1">
+            <div class="profile-avatar">
+              <span id="sidebarInitials">AS</span>
+              <div class="profile-avatar-edit" title="Change photo" onclick="showToast('Photo upload will be available when backend is connected.','info')">
+                <i class="bi bi-pencil-fill"></i>
+              </div>
+            </div>
+            <div>
+              <div id="sidebarName" style="font-family:var(--font-display);font-size:1rem;font-weight:700;color:var(--text-primary);">Andrei Santos</div>
+              <div id="sidebarEmail" style="font-size:0.78rem;color:var(--text-muted);">andrei.santos@email.com</div>
+            </div>
+            <span class="account-badge"><i class="bi bi-check-circle-fill"></i> Verified Account</span>
+          </div>
+
+          <div class="profile-sidebar-nav">
+            <button class="sidebar-nav-link active" onclick="showTab('overview', this)">
+              <i class="bi bi-person-circle"></i> Overview
+            </button>
+            <button class="sidebar-nav-link" onclick="showTab('edit', this)">
+              <i class="bi bi-pencil-square"></i> Edit Profile
+            </button>
+            <button class="sidebar-nav-link" onclick="showTab('password', this)">
+              <i class="bi bi-shield-lock"></i> Change Password
+            </button>
+            <button class="sidebar-nav-link" onclick="showTab('privacy', this)">
+              <i class="bi bi-eye-slash"></i> Privacy
+            </button>
+            <div class="sidebar-nav-divider"></div>
+            <a href="history.html" class="sidebar-nav-link">
+              <i class="bi bi-clock-history"></i> My Results
+            </a>
+            <a href="try-it.html" class="sidebar-nav-link">
+              <i class="bi bi-camera-fill"></i> New Analysis
+            </a>
+            <div class="sidebar-nav-divider"></div>
+            <button class="sidebar-nav-link danger" onclick="showTab('danger', this)">
+              <i class="bi bi-exclamation-triangle"></i> Danger Zone
+            </button>
+            <button class="sidebar-nav-link danger" onclick="confirmLogout()">
+              <i class="bi bi-box-arrow-right"></i> Log Out
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== MAIN PANEL ===== -->
+      <div class="col-lg-9">
+        <div class="profile-panel">
+
+          <!-- Tab buttons -->
+          <div class="profile-tabs" id="profileTabBar">
+            <button class="profile-tab active" data-panel="overview" onclick="showTab('overview', this)">Overview</button>
+            <button class="profile-tab" data-panel="edit"     onclick="showTab('edit', this)">Edit Profile</button>
+            <button class="profile-tab" data-panel="password" onclick="showTab('password', this)">Password</button>
+            <button class="profile-tab" data-panel="privacy"  onclick="showTab('privacy', this)">Privacy</button>
+            <button class="profile-tab" data-panel="danger"   onclick="showTab('danger', this)" style="color:#C0392B;">Danger Zone</button>
+          </div>
+
+          <!-- ===== OVERVIEW ===== -->
+          <div class="profile-tab-panel active" id="panel-overview">
+            <div class="panel-body">
+              <!-- Account info -->
+              <div class="d-flex align-items-center gap-3 mb-4 pb-3" style="border-bottom:1px solid var(--border-light);">
+                <div class="profile-avatar" style="width:64px;height:64px;font-size:1.3rem;">
+                  <span id="panelInitials">AS</span>
+                </div>
+                <div>
+                  <h2 id="panelName" style="font-family:var(--font-display);font-size:1.3rem;font-weight:700;color:var(--text-primary);margin-bottom:2px;">Andrei Santos</h2>
+                  <div id="panelEmail" style="font-size:0.85rem;color:var(--text-muted);">andrei.santos@email.com</div>
+                  <span class="account-badge mt-1 d-inline-flex"><i class="bi bi-check-circle-fill"></i> Active Account</span>
+                </div>
+                <button class="btn-pm-secondary ms-auto d-none d-md-flex" style="font-size:0.82rem;padding:0.5rem 1rem;" onclick="showTab('edit',null)">
+                  <i class="bi bi-pencil"></i> Edit Profile
+                </button>
+              </div>
+
+              <!-- Stats -->
+              <div class="row g-3 mb-4">
+                <div class="col-6 col-md-3">
+                  <div class="profile-stat">
+                    <div class="profile-stat-value" id="statAnalyses">7</div>
+                    <div class="profile-stat-label">Analyses</div>
+                  </div>
+                </div>
+                <div class="col-6 col-md-3">
+                  <div class="profile-stat">
+                    <div class="profile-stat-value">28</div>
+                    <div class="profile-stat-label">Colors Matched</div>
+                  </div>
+                </div>
+                <div class="col-6 col-md-3">
+                  <div class="profile-stat">
+                    <div class="profile-stat-value">3</div>
+                    <div class="profile-stat-label">Skin Categories</div>
+                  </div>
+                </div>
+                <div class="col-6 col-md-3">
+                  <div class="profile-stat">
+                    <div class="profile-stat-value" id="statDays">237</div>
+                    <div class="profile-stat-label">Days Active</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Account details -->
+              <h3 style="font-size:0.9rem;font-weight:700;color:var(--text-primary);margin-bottom:1rem;">Account Information</h3>
+              <div>
+                <div class="info-row">
+                  <div class="info-label">Full Name</div>
+                  <div class="info-value" id="infoName">Andrei Santos</div>
+                </div>
+                <div class="info-row">
+                  <div class="info-label">Email</div>
+                  <div class="info-value" id="infoEmail">andrei.santos@email.com</div>
+                </div>
+                <div class="info-row">
+                  <div class="info-label">Member Since</div>
+                  <div class="info-value">January 15, 2026</div>
+                </div>
+                <div class="info-row">
+                  <div class="info-label">Account Type</div>
+                  <div class="info-value">Standard (Free)</div>
+                </div>
+                <div class="info-row">
+                  <div class="info-label">Last Login</div>
+                  <div class="info-value">September 8, 2026</div>
+                </div>
+              </div>
+
+              <!-- Recent analyses -->
+              <div class="mt-4 pt-3" style="border-top:1px solid var(--border-light);">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                  <h3 style="font-size:0.9rem;font-weight:700;color:var(--text-primary);margin:0;">Recent Analyses</h3>
+                  <a href="history.html" style="font-size:0.8rem;color:var(--pm-gold);font-weight:600;text-decoration:none;">View All</a>
+                </div>
+                <div>
+                  <div class="recent-palette-item">
+                    <div style="width:44px;height:44px;border-radius:var(--radius-md);background:var(--bg-soft);display:flex;align-items:center;justify-content:center;color:var(--text-light);font-size:1.1rem;flex-shrink:0;"><i class="bi bi-person-fill"></i></div>
+                    <div class="flex-grow-1">
+                      <div style="font-size:0.875rem;font-weight:600;color:var(--text-primary);">Light Morena · Combination · Warm</div>
+                      <div style="font-size:0.75rem;color:var(--text-muted);">September 8, 2026</div>
+                    </div>
+                    <div style="display:flex;gap:4px;">
+                      <div style="width:18px;height:18px;border-radius:50%;background:#B76E79;border:2px solid white;box-shadow:var(--shadow-xs);"></div>
+                      <div style="width:18px;height:18px;border-radius:50%;background:#FFAB76;border:2px solid white;box-shadow:var(--shadow-xs);"></div>
+                      <div style="width:18px;height:18px;border-radius:50%;background:#D4A76A;border:2px solid white;box-shadow:var(--shadow-xs);"></div>
+                    </div>
+                    <a href="results.html" style="font-size:0.75rem;color:var(--pm-gold);font-weight:600;text-decoration:none;white-space:nowrap;margin-left:8px;">View</a>
+                  </div>
+                  <div class="recent-palette-item">
+                    <div style="width:44px;height:44px;border-radius:var(--radius-md);background:var(--bg-soft);display:flex;align-items:center;justify-content:center;color:var(--text-light);font-size:1.1rem;flex-shrink:0;"><i class="bi bi-person-fill"></i></div>
+                    <div class="flex-grow-1">
+                      <div style="font-size:0.875rem;font-weight:600;color:var(--text-primary);">Morena · Oily · Neutral</div>
+                      <div style="font-size:0.75rem;color:var(--text-muted);">August 22, 2026</div>
+                    </div>
+                    <div style="display:flex;gap:4px;">
+                      <div style="width:18px;height:18px;border-radius:50%;background:#C0614B;border:2px solid white;box-shadow:var(--shadow-xs);"></div>
+                      <div style="width:18px;height:18px;border-radius:50%;background:#E8835A;border:2px solid white;box-shadow:var(--shadow-xs);"></div>
+                      <div style="width:18px;height:18px;border-radius:50%;background:#C8956C;border:2px solid white;box-shadow:var(--shadow-xs);"></div>
+                    </div>
+                    <a href="results.html" style="font-size:0.75rem;color:var(--pm-gold);font-weight:600;text-decoration:none;white-space:nowrap;margin-left:8px;">View</a>
+                  </div>
+                  <div class="recent-palette-item">
+                    <div style="width:44px;height:44px;border-radius:var(--radius-md);background:var(--bg-soft);display:flex;align-items:center;justify-content:center;color:var(--text-light);font-size:1.1rem;flex-shrink:0;"><i class="bi bi-person-fill"></i></div>
+                    <div class="flex-grow-1">
+                      <div style="font-size:0.875rem;font-weight:600;color:var(--text-primary);">Light · Dry · Cool</div>
+                      <div style="font-size:0.75rem;color:var(--text-muted);">July 30, 2026</div>
+                    </div>
+                    <div style="display:flex;gap:4px;">
+                      <div style="width:18px;height:18px;border-radius:50%;background:#D4778A;border:2px solid white;box-shadow:var(--shadow-xs);"></div>
+                      <div style="width:18px;height:18px;border-radius:50%;background:#F4A7B9;border:2px solid white;box-shadow:var(--shadow-xs);"></div>
+                      <div style="width:18px;height:18px;border-radius:50%;background:#7B5EA7;border:2px solid white;box-shadow:var(--shadow-xs);"></div>
+                    </div>
+                    <a href="results.html" style="font-size:0.75rem;color:var(--pm-gold);font-weight:600;text-decoration:none;white-space:nowrap;margin-left:8px;">View</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== EDIT PROFILE ===== -->
+          <div class="profile-tab-panel" id="panel-edit">
+            <div class="panel-header">
+              <div>
+                <h2 style="font-family:var(--font-display);font-size:1.1rem;font-weight:700;color:var(--text-primary);margin:0;">Edit Profile</h2>
+                <p style="font-size:0.8rem;color:var(--text-muted);margin:0;">Update your personal information.</p>
+              </div>
+            </div>
+            <div class="panel-body">
+              <form id="editProfileForm" novalidate>
+                <div class="row g-3">
+                  <div class="col-12">
+                    <div class="pm-form-group mb-0">
+                      <label class="pm-label" for="editName">Full Name</label>
+                      <div class="pm-input-icon-wrap">
+                        <i class="bi bi-person pm-input-icon"></i>
+                        <input type="text" class="pm-input" id="editName" value="Andrei Santos" data-validate="required|min:2" />
+                      </div>
+                      <span class="pm-field-error" data-error-for="editName"></span>
+                    </div>
+                  </div>
+                  <div class="col-12">
+                    <div class="pm-form-group mb-0">
+                      <label class="pm-label" for="editEmail">Email Address</label>
+                      <div class="pm-input-icon-wrap">
+                        <i class="bi bi-envelope pm-input-icon"></i>
+                        <input type="email" class="pm-input" id="editEmail" value="andrei.santos@email.com" data-validate="required|email" />
+                      </div>
+                      <span class="pm-field-error" data-error-for="editEmail"></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="d-flex gap-2 mt-4 flex-wrap">
+                  <button type="submit" class="btn-pm-primary" style="padding:0.7rem 1.6rem;">
+                    <i class="bi bi-check-lg"></i> Save Changes
+                  </button>
+                  <button type="button" class="btn-pm-secondary" onclick="showTab('overview',null)" style="padding:0.7rem 1.2rem;">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- ===== CHANGE PASSWORD ===== -->
+          <div class="profile-tab-panel" id="panel-password">
+            <div class="panel-header">
+              <div>
+                <h2 style="font-family:var(--font-display);font-size:1.1rem;font-weight:700;color:var(--text-primary);margin:0;">Change Password</h2>
+                <p style="font-size:0.8rem;color:var(--text-muted);margin:0;">Update your account password.</p>
+              </div>
+            </div>
+            <div class="panel-body">
+              <form id="changePasswordForm" novalidate style="max-width:440px;">
+                <div class="pm-form-group">
+                  <label class="pm-label" for="currentPassword">Current Password</label>
+                  <div class="pm-input-icon-wrap">
+                    <i class="bi bi-lock pm-input-icon"></i>
+                    <input type="password" class="pm-input" id="currentPassword" placeholder="Enter current password" data-validate="required" style="padding-right:2.75rem;" />
+                    <button type="button" class="pm-password-toggle"><i class="bi bi-eye"></i></button>
+                  </div>
+                  <span class="pm-field-error" data-error-for="currentPassword"></span>
+                </div>
+                <div class="pm-form-group">
+                  <label class="pm-label" for="newPassword">New Password</label>
+                  <div class="pm-input-icon-wrap">
+                    <i class="bi bi-lock-fill pm-input-icon"></i>
+                    <input type="password" class="pm-input" id="newPassword" placeholder="Create new password" data-validate="required|min:8" style="padding-right:2.75rem;" />
+                    <button type="button" class="pm-password-toggle"><i class="bi bi-eye"></i></button>
+                  </div>
+                  <span class="pm-field-error" data-error-for="newPassword"></span>
+                </div>
+                <div class="pm-form-group">
+                  <label class="pm-label" for="confirmNewPassword">Confirm New Password</label>
+                  <div class="pm-input-icon-wrap">
+                    <i class="bi bi-lock-fill pm-input-icon"></i>
+                    <input type="password" class="pm-input" id="confirmNewPassword" placeholder="Re-enter new password" data-validate="required|match" data-match-target="newPassword" style="padding-right:2.75rem;" />
+                    <button type="button" class="pm-password-toggle"><i class="bi bi-eye"></i></button>
+                  </div>
+                  <span class="pm-field-error" data-error-for="confirmNewPassword"></span>
+                </div>
+                <div class="pm-alert pm-alert-info mb-3" style="font-size:0.78rem;">
+                  <i class="bi bi-shield-check flex-shrink-0"></i>
+                  <span>Use at least 8 characters with a mix of uppercase, numbers, and symbols for a strong password.</span>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                  <button type="submit" class="btn-pm-primary" style="padding:0.7rem 1.6rem;">
+                    <i class="bi bi-shield-fill-check"></i> Update Password
+                  </button>
+                  <button type="button" class="btn-pm-secondary" onclick="showTab('overview',null)" style="padding:0.7rem 1.2rem;">Cancel</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- ===== PRIVACY ===== -->
+          <div class="profile-tab-panel" id="panel-privacy">
+            <div class="panel-header">
+              <div>
+                <h2 style="font-family:var(--font-display);font-size:1.1rem;font-weight:700;color:var(--text-primary);margin:0;">Privacy Settings</h2>
+                <p style="font-size:0.8rem;color:var(--text-muted);margin:0;">Manage how your data is used.</p>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div class="pm-alert pm-alert-info mb-4" style="font-size:0.82rem;">
+                <i class="bi bi-shield-lock flex-shrink-0"></i>
+                <div>
+                  <strong>Your Privacy Matters.</strong> Your image is used solely for skin analysis and recommendation purposes. We do not sell or share your personal data with third parties.
+                </div>
+              </div>
+
+              <div class="d-flex flex-column gap-3">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:0.9rem 0;border-bottom:1px solid var(--border-light);">
+                  <div>
+                    <div style="font-size:0.875rem;font-weight:600;color:var(--text-primary);margin-bottom:2px;">Save Analysis History</div>
+                    <div style="font-size:0.8rem;color:var(--text-muted);line-height:1.5;">Store your analyses in the history dashboard for future reference.</div>
+                  </div>
+                  <label class="pm-toggle flex-shrink-0"><input type="checkbox" checked><span class="pm-toggle-slider"></span></label>
+                </div>
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:0.9rem 0;border-bottom:1px solid var(--border-light);">
+                  <div>
+                    <div style="font-size:0.875rem;font-weight:600;color:var(--text-primary);margin-bottom:2px;">Image Storage</div>
+                    <div style="font-size:0.8rem;color:var(--text-muted);line-height:1.5;">Allow Perfect Match to store your facial images alongside your analysis results.</div>
+                  </div>
+                  <label class="pm-toggle flex-shrink-0"><input type="checkbox"><span class="pm-toggle-slider"></span></label>
+                </div>
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:0.9rem 0;">
+                  <div>
+                    <div style="font-size:0.875rem;font-weight:600;color:var(--text-primary);margin-bottom:2px;">Research Contribution</div>
+                    <div style="font-size:0.8rem;color:var(--text-muted);line-height:1.5;">Allow anonymized data to be used for improving the skin tone detection research system.</div>
+                  </div>
+                  <label class="pm-toggle flex-shrink-0"><input type="checkbox" checked><span class="pm-toggle-slider"></span></label>
+                </div>
+              </div>
+
+              <div class="mt-4">
+                <button class="btn-pm-primary" style="padding:0.7rem 1.6rem;" onclick="showToast('Privacy settings saved.','success')">
+                  <i class="bi bi-check-lg"></i> Save Settings
+                </button>
+              </div>
+
+              <div class="pm-alert pm-alert-warning mt-4" style="font-size:0.78rem;">
+                <i class="bi bi-info-circle flex-shrink-0"></i>
+                <span>Perfect Match provides cosmetic color recommendations only and is not a medical or dermatological diagnostic tool. Results are based on image processing and may vary.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== DANGER ZONE ===== -->
+          <div class="profile-tab-panel" id="panel-danger">
+            <div class="panel-header">
+              <div>
+                <h2 style="font-family:var(--font-display);font-size:1.1rem;font-weight:700;color:#C0392B;margin:0;">Danger Zone</h2>
+                <p style="font-size:0.8rem;color:var(--text-muted);margin:0;">Irreversible account actions.</p>
+              </div>
+            </div>
+            <div class="panel-body d-flex flex-column gap-3">
+
+              <!-- Log out -->
+              <div class="danger-zone-card" style="border-color:rgba(107,76,59,0.2);background:rgba(107,76,59,0.02);">
+                <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+                  <div>
+                    <div style="font-size:0.9rem;font-weight:700;color:var(--text-primary);margin-bottom:3px;display:flex;align-items:center;gap:6px;">
+                      <i class="bi bi-box-arrow-right" style="color:var(--pm-brown-mid);"></i> Log Out
+                    </div>
+                    <p style="font-size:0.82rem;color:var(--text-secondary);margin:0;line-height:1.5;">Sign out of your Perfect Match account on this device.</p>
+                  </div>
+                  <button class="btn-pm-secondary" style="font-size:0.82rem;padding:0.55rem 1.1rem;flex-shrink:0;" onclick="confirmLogout()">
+                    Log Out
+                  </button>
+                </div>
+              </div>
+
+              <!-- Delete all analyses -->
+              <div class="danger-zone-card" style="border-color:rgba(184,147,90,0.25);background:rgba(184,147,90,0.02);">
+                <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+                  <div>
+                    <div style="font-size:0.9rem;font-weight:700;color:var(--text-primary);margin-bottom:3px;display:flex;align-items:center;gap:6px;">
+                      <i class="bi bi-trash" style="color:var(--pm-gold);"></i> Clear Analysis History
+                    </div>
+                    <p style="font-size:0.82rem;color:var(--text-secondary);margin:0;line-height:1.5;">Delete all your saved analyses and results. This action cannot be undone.</p>
+                  </div>
+                  <button class="btn-pm-secondary" style="font-size:0.82rem;padding:0.55rem 1.1rem;flex-shrink:0;border-color:rgba(184,147,90,0.4);" onclick="confirmClearHistory()">
+                    Clear History
+                  </button>
+                </div>
+              </div>
+
+              <!-- Delete account -->
+              <div class="danger-zone-card">
+                <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+                  <div>
+                    <div style="font-size:0.9rem;font-weight:700;color:#C0392B;margin-bottom:3px;display:flex;align-items:center;gap:6px;">
+                      <i class="bi bi-person-x-fill"></i> Delete Account
+                    </div>
+                    <p style="font-size:0.82rem;color:var(--text-secondary);margin:0;line-height:1.5;">Permanently delete your account and all associated data. This cannot be undone.</p>
+                  </div>
+                  <button class="btn-pm-primary" style="font-size:0.82rem;padding:0.55rem 1.1rem;flex-shrink:0;background:linear-gradient(135deg,#C0392B,#E07272);box-shadow:0 2px 8px rgba(192,57,43,0.25);" onclick="confirmDeleteAccount()">
+                    Delete Account
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div><!-- /profile-panel -->
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Logout confirm modal -->
+<div class="modal fade" id="logoutModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:400px;">
+    <div class="modal-content" style="border-radius:var(--radius-xl);border:1px solid var(--border-light);box-shadow:var(--shadow-xl);">
+      <div class="modal-header" style="border-bottom:1px solid var(--border-light);padding:1.5rem 1.75rem 1rem;">
+        <h5 class="modal-title" style="font-family:var(--font-display);font-size:1.1rem;color:var(--text-primary);">Log Out</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" style="opacity:0.4;"></button>
+      </div>
+      <div class="modal-body" style="padding:1.25rem 1.75rem;">
+        <p style="font-size:0.875rem;color:var(--text-secondary);margin:0;">Are you sure you want to log out of your Perfect Match account?</p>
+      </div>
+      <div class="modal-footer" style="border-top:1px solid var(--border-light);padding:1rem 1.75rem 1.5rem;gap:0.75rem;">
+        <button type="button" class="btn-pm-ghost" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn-pm-primary" onclick="Auth.logout()">
+          <i class="bi bi-box-arrow-right"></i> Log Out
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete account confirm modal -->
+<div class="modal fade" id="deleteAccountModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
+    <div class="modal-content" style="border-radius:var(--radius-xl);border:1px solid var(--border-light);box-shadow:var(--shadow-xl);">
+      <div class="modal-header" style="border-bottom:1px solid var(--border-light);padding:1.5rem 1.75rem 1rem;">
+        <h5 class="modal-title" style="font-family:var(--font-display);font-size:1.1rem;color:#C0392B;">Delete Account</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" style="opacity:0.4;"></button>
+      </div>
+      <div class="modal-body" style="padding:1.25rem 1.75rem;">
+        <div class="pm-alert pm-alert-error mb-3" style="font-size:0.82rem;">
+          <i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i>
+          <span><strong>This is permanent.</strong> All your data, analyses, and results will be irreversibly deleted.</span>
+        </div>
+        <p style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:1rem;">Type <strong>DELETE</strong> to confirm:</p>
+        <input type="text" class="pm-input" id="deleteConfirmInput" placeholder='Type "DELETE"' />
+      </div>
+      <div class="modal-footer" style="border-top:1px solid var(--border-light);padding:1rem 1.75rem 1.5rem;gap:0.75rem;">
+        <button type="button" class="btn-pm-ghost" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn-pm-primary" id="confirmDeleteAccountBtn" style="background:linear-gradient(135deg,#C0392B,#E07272);" onclick="executeDeleteAccount()">
+          <i class="bi bi-person-x-fill"></i> Delete My Account
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== FOOTER ===================== -->
+<footer class="pm-footer">
+  <div class="container">
+    <div class="row gy-3">
+      <div class="col-md-6">
+        <a href="index.html" class="d-flex align-items-center gap-2 text-decoration-none mb-2">
+          <div class="pm-logo-mark" style="width:28px;height:28px;font-size:0.75rem;">PM</div>
+          <span class="pm-logo-text" style="color:rgba(255,255,255,0.8);">Perfect <span style="color:var(--pm-gold-light);">Match</span></span>
+        </a>
+        <p class="disclaimer-text">Perfect Match provides cosmetic color recommendations only and is not a medical or dermatological diagnostic tool.</p>
+      </div>
+      <div class="col-md-6 d-flex justify-content-md-end align-items-end">
+        <p class="pm-footer-bottom">© 2026 Perfect Match. BSIT Undergraduate Research Project.</p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="assets/js/app.js"></script>
+<script>
+  /* ---- Tab switching ---- */
+  function showTab(tabId, triggerEl) {
+    // Hide all panels
+    document.querySelectorAll('.profile-tab-panel').forEach(p => p.classList.remove('active'));
+    // Show target
+    const target = document.getElementById('panel-' + tabId);
+    if (target) target.classList.add('active');
+
+    // Update top tab bar
+    document.querySelectorAll('.profile-tab').forEach(t => {
+      t.classList.toggle('active', t.dataset.panel === tabId);
+    });
+
+    // Update sidebar nav
+    document.querySelectorAll('.sidebar-nav-link').forEach(l => l.classList.remove('active'));
+    if (triggerEl) triggerEl.classList.add('active');
+    else {
+      // Try to match by onclick
+      document.querySelectorAll('.sidebar-nav-link').forEach(l => {
+        if ((l.getAttribute('onclick') || '').includes(`'${tabId}'`)) l.classList.add('active');
+      });
+    }
+  }
+
+  /* ---- Populate fields from auth ---- */
+  document.addEventListener('DOMContentLoaded', () => {
+    // Demo: always show profile with sample data
+    const user = Auth.getUser() || PM_MOCK.sampleUser;
+    const name  = user?.fullName || 'Andrei Santos';
+    const email = user?.email    || 'andrei.santos@email.com';
+    const initials = name.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase();
+
+    document.getElementById('sidebarInitials').textContent = initials;
+    document.getElementById('panelInitials').textContent   = initials;
+    document.getElementById('sidebarName').textContent  = name;
+    document.getElementById('sidebarEmail').textContent = email;
+    document.getElementById('panelName').textContent    = name;
+    document.getElementById('panelEmail').textContent   = email;
+    document.getElementById('infoName').textContent     = name;
+    document.getElementById('infoEmail').textContent    = email;
+    if (document.getElementById('editName'))  document.getElementById('editName').value  = name;
+    if (document.getElementById('editEmail')) document.getElementById('editEmail').value = email;
+    if (user?.totalAnalyses !== undefined) {
+      document.getElementById('statAnalyses').textContent = user.totalAnalyses || 7;
+    }
+    // Days since account creation
+    const since = new Date(user?.createdAt || '2026-01-15');
+    const today = new Date('2026-09-08');
+    const days  = Math.floor((today - since) / (1000*60*60*24));
+    document.getElementById('statDays').textContent = days;
+  });
+
+  /* ---- Edit profile form ---- */
+  document.getElementById('editProfileForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    if (!FormUtils.validate(this)) return;
+    const btn = this.querySelector('[type="submit"]');
+    btn.innerHTML = '<span class="pm-spinner sm" style="border-color:rgba(255,255,255,0.3);border-top-color:white;border-right-color:rgba(255,255,255,0.6);"></span> Saving…';
+    btn.disabled = true;
+    setTimeout(() => {
+      const newName  = document.getElementById('editName').value.trim();
+      const newEmail = document.getElementById('editEmail').value.trim();
+      // Update display
+      document.getElementById('sidebarName').textContent = newName;
+      document.getElementById('panelName').textContent   = newName;
+      document.getElementById('infoName').textContent    = newName;
+      document.getElementById('sidebarEmail').textContent = newEmail;
+      document.getElementById('panelEmail').textContent   = newEmail;
+      document.getElementById('infoEmail').textContent    = newEmail;
+      const initials = newName.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase();
+      document.getElementById('sidebarInitials').textContent = initials;
+      document.getElementById('panelInitials').textContent   = initials;
+      btn.innerHTML = '<i class="bi bi-check-lg"></i> Save Changes';
+      btn.disabled  = false;
+      showToast('Profile updated successfully.', 'success');
+      showTab('overview', null);
+    }, 1000);
+  });
+
+  /* ---- Change password form ---- */
+  document.getElementById('changePasswordForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    if (!FormUtils.validate(this)) return;
+    const btn = this.querySelector('[type="submit"]');
+    btn.innerHTML = '<span class="pm-spinner sm" style="border-color:rgba(255,255,255,0.3);border-top-color:white;border-right-color:rgba(255,255,255,0.6);"></span> Updating…';
+    btn.disabled = true;
+    setTimeout(() => {
+      btn.innerHTML = '<i class="bi bi-shield-fill-check"></i> Update Password';
+      btn.disabled  = false;
+      this.reset();
+      showToast('Password updated successfully.', 'success');
+      showTab('overview', null);
+    }, 1000);
+  });
+
+  /* ---- Logout ---- */
+  function confirmLogout() {
+    new bootstrap.Modal(document.getElementById('logoutModal')).show();
+  }
+
+  /* ---- Clear history ---- */
+  function confirmClearHistory() {
+    if (confirm('Clear all analysis history? This cannot be undone.')) {
+      showToast('Analysis history cleared.', 'info');
+    }
+  }
+
+  /* ---- Delete account ---- */
+  function confirmDeleteAccount() {
+    document.getElementById('deleteConfirmInput').value = '';
+    new bootstrap.Modal(document.getElementById('deleteAccountModal')).show();
+  }
+
+  function executeDeleteAccount() {
+    const val = document.getElementById('deleteConfirmInput').value.trim().toUpperCase();
+    if (val !== 'DELETE') {
+      showToast('Please type DELETE to confirm.', 'error');
+      return;
+    }
+    bootstrap.Modal.getInstance(document.getElementById('deleteAccountModal')).hide();
+    showToast('Account deleted. Redirecting…', 'info');
+    setTimeout(() => {
+      Auth.logout();
+      window.location.href = 'index.html';
+    }, 1500);
+  }
+</script>
+</body>
+</html>
